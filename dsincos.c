@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <math.h>
 
 /* For FORTRAN, compile with -DFORTRAN and call as if this was defined:
@@ -6,61 +7,43 @@
  */
 
 #ifdef FORTRAN
-void dsincos_ (double *ain, double *s, double *c) {
+void dsincos_ (double *a, double *s, double *c) {
 #else
 void dsincos (double a, double *s, double *c) {
 #endif
-  int k, r;
-  double sr, cr;
 
+  /* Check machine architecture */
+#if defined(__GNUC__) && (defined(__i386) || defined(__amd64))
+  /* x87 assembler routine */
+  __asm__ (
+      "fldl    %2"        "\n\t"  /* load angle */
+      "fsincos"           "\n\t"  /* compute sin, cos */
+      "fnstsw  %%ax"      "\n\t"  /* get status word */
+      "btw     $10, %%ax" "\n\t"  /* check bit 10 = C2, computed? */
+      "jnc     1f"        "\n\t"  /* keep going if need to reduce arguments */
+      "fldpi"             "\n\t"  /* pi */
+      "fadd    %%st(0)"   "\n\t"  /* 2*pi */
+      "fxch    %%st(1)"   "\n\t"  /* put args in correct order */
+"2: " "fprem1"            "\n\t"  /* angle modulo 2*pi */
+      "fnstsw  %%ax"      "\n\t"
+      "btw     $10, %%ax" "\n\t"
+      "jc      2b"        "\n\t"  /* loop until reduction is complete */
+      "fstp    %%st(1)"   "\n\t"  /* clean up stack */
+      "fsincos"           "\n\t"  /* compute final sin, cos */
+"1: " "fstpl   %1"        "\n\t"  /* store outputs */
+      "fstpl   %0"
+      : "=m" (*s), "=m" (*c)
 #ifdef FORTRAN
-  double a = *ain;  /* copy so our mods don't affect original */
+      : "m" (*a)
+#else
+      : "m" (a)
 #endif
+      : "ax", "st", "st(1)");
 
-  /* Check for NaN and infinity, and act accordingly */
-  if(isnan(a) || isinf(a)) {
-    *s = a-a;
-    *c = a-a;
-  }
-  else {
-    /* Reduce argument to a - k*pi/2 in [-pi/4, pi/4] */
-    if(a >= 0) {
-      k = (int) (a / M_PI_2 + 0.5);
-      r = k % 4;
-    }
-    else {
-      k = (int) (a / M_PI_2 - 0.5);
-      r = k % 4;
-      if(r < 0)
-	r += 4;
-    }
-
-    a -= k*M_PI_2;
-
-    /* Compute answer */
-    __asm__ volatile("fsincos"
-		     : "=t" (cr), "=u" (sr)
-		     : "0" (a));
-    
-    /* Now figure out what to do with it based on k mod 4 */
-    switch(r) {
-    case 0:
-      *s =  sr;
-      *c =  cr;
-      break;
-    case 1:
-      *s =  cr;
-      *c = -sr;
-      break;
-    case 2:
-      *s = -sr;
-      *c = -cr;
-      break;
-    case 3:
-      *s = -cr;
-      *c =  sr;
-      break;
-    }
-  }
+#else
+  /* Generic C implementation using library functions */
+  *s = sin(*a);
+  *c = cos(*a);
+#endif
 }
 
