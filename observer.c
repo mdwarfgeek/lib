@@ -230,3 +230,157 @@ int observer_update (struct observer *obs,
   return(0);
 }
 
+void observer_ast2obs (struct observer *obs,
+		       double *s,
+		       double pr,
+		       unsigned char mask) {    /* parts we want */
+  double tmp[3];
+  int i;
+
+  double q[3], bdefl, defl, fe, fq;
+  double sdvg, sab, vab;
+
+  /* Light deflection (e.g. Murray 1981, Eq. 39).
+     Sun only, planets neglected. */
+  if(mask & TR_DEFL) {
+    /* Form unit vector from Sun to source */
+    for(i = 0; i < 3; i++)
+      q[i] = s[i] + pr * obs->hop[i];
+
+    v_renorm(q);
+
+    /* Impact parameter (in AU) */
+    bdefl = obs->hdist + v_d_v(q, obs->hop);
+
+    /* Restrain inside Sun's disc */
+    if(bdefl < obs->minbdefl)
+      bdefl = obs->minbdefl;
+
+    /* Amount of light deflection / Earth-Sun distance */
+    defl = 2.0 * obs->gpsun / bdefl;
+
+    /* Apply correction, keeping vector normalized */
+    fe = v_d_v(q, s);
+    fq = v_d_v(obs->hop, s);
+
+    for(i = 0; i < 3; i++)
+      s[i] += defl*(obs->hop[i]*fe - q[i]*fq);
+  }
+
+  /* Annual aberration (e.g. Murray 1981, Eq. 48) */
+  if(mask & TR_ANNAB) {
+    /* Scalar product of source and Earth velocity vectors times gamma */
+    sdvg = obs->gab * v_d_v(s, obs->vab);
+
+    /* Constants in aberration formula */
+    sab = 1.0 / (obs->gab + sdvg);
+    vab = sab*obs->gab * (1.0 + sdvg / (1.0 + obs->gab));
+    
+    /* Apply aberration */
+    for(i = 0; i < 3; i++)
+      s[i] = sab*s[i] + vab*obs->vab[i];
+  }
+
+  /* "Local GCRS" -> Topocentric (-h, delta) */
+  if(mask & TR_TOPO) {
+    m_x_v(obs->ctm, s, tmp);
+    v_copy(s, tmp);
+  }
+
+  /* Latitude of observer */
+  if(mask & TR_LAT || mask & TR_REFRO) {
+    m_x_v(obs->phm, s, tmp);
+    v_copy(s, tmp);
+  }
+
+  /* Refraction */
+  if(mask & TR_REFRO) {
+    refract_vec(obs->refco, 0, s, s);
+
+    /* Take latitude off again if requested */
+    if(!(mask & TR_LAT)) {
+      mt_x_v(obs->phm, s, tmp);
+      v_copy(s, tmp);
+    }
+  }
+}
+
+void observer_obs2ast (struct observer *obs,
+		       double *s,
+		       double pr,
+		       unsigned char mask) {    /* parts we want */
+  double tmp[3];
+  int i;
+
+  double q[3], bdefl, defl, fe, fq;
+  double sdvg, sab, vab;
+
+  if(mask & TR_REFRO) {
+    /* Convert to horizon if vector is equatorial */
+    if(!(mask & TR_LAT)) {
+      m_x_v(obs->phm, s, tmp);
+      v_copy(s, tmp);
+    }
+
+    /* Take off refraction */
+    refract_vec(obs->refco, 1, s, s);
+  }
+
+  /* Latitude of observer */
+  if(mask & TR_LAT || mask & TR_REFRO) {
+    mt_x_v(obs->phm, s, tmp);
+    v_copy(s, tmp);
+  }
+
+  /* Topocentric (-h, delta) to "Local GCRS" */
+  if(mask & TR_TOPO) {
+    mt_x_v(obs->ctm, s, tmp);
+    v_copy(s, tmp);
+  }
+
+  /* Annual aberration (e.g. Murray 1981, Eq. 48).  This inverse 
+     follows the strict definitions of the (inverse) Lorentz
+     transformations, so does not exactly invert the one in the
+     routine above. */
+  if(mask & TR_ANNAB) {
+    /* Scalar product of source and Earth velocity vectors times gamma */
+    sdvg = obs->gab * v_d_v(s, obs->vab);
+
+    /* Constants in aberration formula */
+    sab = 1.0 / (obs->gab - sdvg);
+    vab = sab*obs->gab * (1.0 - sdvg / (1.0 + obs->gab));
+    
+    /* Apply aberration */
+    for(i = 0; i < 3; i++)
+      s[i] = sab*s[i] - vab*obs->vab[i];
+  }
+
+  /* Light deflection (e.g. Murray 1981, Eq. 39).
+     Sun only, planets neglected.  This inverse is only to leading
+     order, and neglects the (small) effect of the deflection by
+     approximating s' = s in the scalar products. */
+  if(mask & TR_DEFL) {
+    /* Form unit vector from Sun to source */
+    for(i = 0; i < 3; i++)
+      q[i] = s[i] + pr * obs->hop[i];
+
+    v_renorm(q);
+
+    /* Impact parameter (in AU) */
+    bdefl = obs->hdist + v_d_v(q, obs->hop);
+
+    /* Restrain inside Sun's disc */
+    if(bdefl < obs->minbdefl)
+      bdefl = obs->minbdefl;
+
+    /* Amount of light deflection / Earth-Sun distance */
+    defl = 2.0 * obs->gpsun / bdefl;
+
+    /* Apply correction, keeping vector normalized */
+    fe = v_d_v(q, s);
+    fq = v_d_v(obs->hop, s);
+
+    for(i = 0; i < 3; i++)
+      s[i] -= defl*(obs->hop[i]*fe - q[i]*fq);
+  }
+}

@@ -60,6 +60,9 @@
 
 /* -- Other constants -- */
 
+/* Buffer size for reading files */
+#define BUFSIZE 1024
+
 /* Number of refraction constants */
 #define NREFCO  5
 
@@ -70,8 +73,24 @@
 #define PNANG_EPSA 3
 #define NPNANG     4
 
-/* Buffer size for reading files */
-#define BUFSIZE 1024
+/* Constants specifying corrections to apply.  Many of the possible
+   combinations don't make any sense, but there are no restrictions
+   implemented in the present routine. */
+#define TR_MOTION    0x01
+#define TR_PLX       0x02
+#define TR_DEFL      0x04
+#define TR_ANNAB     0x08
+#define TR_TOPO      0x10
+#define TR_LAT       0x20
+#define TR_REFRO     0x40
+
+/* Combinations for some common operations */
+#define TR_TO_AST     (TR_MOTION | TR_PLX)
+#define TR_TO_GCRS    (TR_TO_AST | TR_DEFL | TR_ANNAB)
+#define TR_TO_TOPO_HD (TR_TO_GCRS | TR_TOPO)
+#define TR_TO_OBS_HD  (TR_TO_TOPO_HD | TR_REFRO)
+#define TR_TO_TOPO_AZ (TR_TO_TOPO_HD | TR_LAT)
+#define TR_TO_OBS_AZ  (TR_TO_TOPO_AZ | TR_REFRO)
 
 /* -- Data structures -- */
 
@@ -409,6 +428,16 @@ int observer_update (struct observer *obs,
 		     double tt,
 		     unsigned char mask);
 
+void observer_ast2obs (struct observer *obs,
+		       double *s,
+		       double pr,
+		       unsigned char mask);
+
+void observer_obs2ast (struct observer *obs,
+		       double *s,
+		       double pr,
+		       unsigned char mask);
+
 /* -- prenut.c: precession and nutation -- */
 
 /* Precession and frame bias, IAU 2006, Fukushima-Williams angles */
@@ -456,25 +485,6 @@ void refract_corr (double *refco, double tanz, double *refr, double *deriv);
 void refract_vec (double *refco, unsigned char unref, double *vi, double *vo);
 
 /* -- source.c -- */
-
-/* Constants specifying corrections to apply.  Many of the possible
-   combinations don't make any sense, but there are no restrictions
-   implemented in the present routine. */
-#define TR_MOTION    0x01
-#define TR_PLX       0x02
-#define TR_DEFL      0x04
-#define TR_ANNAB     0x08
-#define TR_TOPO      0x10
-#define TR_LAT       0x20
-#define TR_REFRO     0x40
-
-/* Combinations for some common operations */
-#define TR_TO_AST     (TR_MOTION | TR_PLX)
-#define TR_TO_GCRS    (TR_TO_AST | TR_DEFL | TR_ANNAB)
-#define TR_TO_TOPO_HD (TR_TO_GCRS | TR_TOPO)
-#define TR_TO_OBS_HD  (TR_TO_TOPO_HD | TR_REFRO)
-#define TR_TO_TOPO_AZ (TR_TO_TOPO_HD | TR_LAT)
-#define TR_TO_OBS_AZ  (TR_TO_TOPO_AZ | TR_REFRO)
 
 void source_star (struct source *src,
 		  double ra, double de,      /* radians */

@@ -118,8 +118,6 @@ void source_place (struct observer *obs,
 		   double *pr_r) {
   double vb[3], tmp[3];
   double pr, nf, dt;
-  double q[3], bdefl, defl, fe, fq;
-  double sdvg, sab, vab;
   int i;
 
   if(src->type == SOURCE_STAR) {
@@ -263,84 +261,8 @@ void source_place (struct observer *obs,
     }
   }
 
-  /* Light deflection (e.g. Murray 1981, Eq. 39).
-     Sun only, planets neglected. */
-  if(mask & TR_DEFL) {
-    /* Form unit vector from Sun to source */
-    for(i = 0; i < 3; i++)
-      q[i] = s[i] + pr * obs->hop[i];
-
-    v_renorm(q);
-
-    /* Impact parameter (in AU) */
-    bdefl = obs->hdist + v_d_v(q, obs->hop);
-
-    /* Restrain inside Sun's disc */
-    if(bdefl < obs->minbdefl)
-      bdefl = obs->minbdefl;
-
-    /* Amount of light deflection / Earth-Sun distance */
-    defl = 2.0 * obs->gpsun / bdefl;
-
-    /* Apply correction, keeping vector normalized */
-    fe = v_d_v(q, s);
-    fq = v_d_v(obs->hop, s);
-
-    for(i = 0; i < 3; i++)
-      s[i] += defl*(obs->hop[i]*fe - q[i]*fq);
-  }
-
-  /* Annual aberration (e.g. Murray 1981, Eq. 48) */
-  if(mask & TR_ANNAB) {
-    /* Scalar product of source and Earth velocity vectors times gamma */
-    sdvg = obs->gab * v_d_v(s, obs->vab);
-
-    /* Constants in aberration formula */
-    sab = 1.0 / (obs->gab + sdvg);
-    vab = sab*obs->gab * (1.0 + sdvg / (1.0 + obs->gab));
-    
-    /* Apply aberration */
-    for(i = 0; i < 3; i++)
-      s[i] = sab*s[i] + vab*obs->vab[i];
-  }
-
-  /* "Local GCRS" -> Topocentric (-h, delta) */
-  if(mask & TR_TOPO) {
-    m_x_v(obs->ctm, s, tmp);
-    v_copy(s, tmp);
-
-    if(dsdt) {
-      m_x_v(obs->ctm, dsdt, tmp);
-      v_copy(dsdt, tmp);
-    }
-  }
-
-  /* Latitude of observer */
-  if(mask & TR_LAT || mask & TR_REFRO) {
-    m_x_v(obs->phm, s, tmp);
-    v_copy(s, tmp);
-
-    if(dsdt) {
-      m_x_v(obs->phm, dsdt, tmp);
-      v_copy(dsdt, tmp);
-    }
-  }
-
-  /* Refraction */
-  if(mask & TR_REFRO) {
-    refract_vec(obs->refco, 0, s, s);
-
-    /* Take latitude off again if requested */
-    if(!(mask & TR_LAT)) {
-      mt_x_v(obs->phm, s, tmp);
-      v_copy(s, tmp);
-
-      if(dsdt) {
-	mt_x_v(obs->phm, dsdt, tmp);
-	v_copy(dsdt, tmp);
-      }
-    }
-  }
+  if(mask > (TR_MOTION | TR_PLX))
+    observer_ast2obs(obs, s, pr, mask);
 
   if(pr_r)
     *pr_r = pr;
