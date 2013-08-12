@@ -271,6 +271,11 @@ struct source {
   double rot[3][3];  /* combined rotation matrix */
 };
 
+/* -- Miscellaneous useful macros -- */
+
+/* Wrap angle to [0, TWOPI) */
+#define ranorm(a) ((a) >= 0 ? fmod((a), TWOPI) : TWOPI+fmod((a), TWOPI))
+
 /* -- airmass.c: Airmass -- */
 
 double airmass (double secz);
@@ -293,6 +298,10 @@ double dtdb (double mjd,        /* TDB as MJD (but TT is adequate) */
 	     double longitude,  /* rad, East + */
 	     double u,          /* distance from Earth spin axis, m */
 	     double z);         /* distance from Earth equatorial plane, m */
+
+/* -- dsincos.c: sine and cosine in one operation -- */
+
+void dsincos (double a, double *s, double *c);
 
 /* -- geoc.c: geodetic to geocentric -- */
 
@@ -365,13 +374,14 @@ void m_x_m (double a[3][3], double b[3][3], double c[3][3]);
 double v_renorm (double v[3]);
 
 /* Vector to spherical (-ha, delta) or (az, el) */
-void v_to_ad (double v[3], double *a, double *d);
+void v_to_ad (double v[3], unsigned char flip, double *a, double *d);
 
 /* Vectors to time derivatives of spherical coordinates */
-void v_to_ad_dt (double v[3], double dvdt[3], double *dadt, double *dddt);
+void v_to_ad_dt (double v[3], double dvdt[3], unsigned char flip,
+		 double *dadt, double *dddt);
 
 /* Vector to spherical (az, zd) */
-void v_to_az (double v[3], double *a, double *z);
+void v_to_az (double v[3], unsigned char flip, double *a, double *z);
 
 /* Angle between two vectors, robust method */
 double v_angle_v (double u[3], double v[3]);

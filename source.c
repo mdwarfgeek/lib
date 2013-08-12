@@ -19,11 +19,9 @@ void source_star (struct source *src,
   src->type = SOURCE_STAR;
 
   /* Precompute these */
-  sa = sin(ra);
-  ca = cos(ra);
-  sd = sin(de);
-  cd = cos(de);
-  
+  dsincos(ra, &sa, &ca);
+  dsincos(de, &sd, &cd);
+
   /* Unit vector to star at catalogue epoch */
   src->ref_n[0] = ca*cd;
   src->ref_n[1] = sa*cd;

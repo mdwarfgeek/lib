@@ -14,8 +14,11 @@ CFLAGS=-Wall -g -fPIC -I$(HOME)/include
 
 ### End constants section ###
 
-SRCS=airmass.c bary.c dtai.c dtdb.c geoc.c iers.c jpleph.c matvec.c observer.c prenut.c refract.c source.c strutil.c
+SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c geoc.c iers.c jpleph.c matvec.c observer.c prenut.c refract.c source.c strutil.c
 OBJS=${SRCS:%.c=%.o}
+
+TESTDSINCOS_SRCS=testdsincos.c
+TESTDSINCOS_OBJS=${TESTDSINCOS_SRCS:%.c=%.o}
 
 TESTJPL_SRCS=testjpl.c cvtunit.c util.c
 TESTJPL_OBJS=${TESTJPL_SRCS:%.c=%.o}
@@ -46,6 +49,9 @@ liblfa.a: $(OBJS)
 	ar r $@ $(OBJS)
 	ranlib $@
 
+testdsincos: $(TESTDSINCOS_OBJS) liblfa.a
+	$(CC) -o testdsincos $(TESTDSINCOS_OBJS) liblfa.a -lm
+
 testjpl: $(TESTJPL_OBJS) liblfa.a
 	$(CC) -o testjpl $(TESTJPL_OBJS) -L$(HOME)/lib64 liblfa.a -lsofa_c -lm
 
@@ -63,6 +69,7 @@ testsun: $(TESTSUN_OBJS) liblfa.a
 
 clean:
 	rm -f $(OBJS) liblfa.a
+	rm -f $(TESTDSINCOS_OBJS) testdsincos
 	rm -f $(TESTJPL_OBJS) testjpl
 	rm -f $(TESTOBS_OBJS) testobs
 	rm -f $(TESTPLAN_OBJS) testplan

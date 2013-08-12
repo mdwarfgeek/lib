@@ -7,7 +7,10 @@
 #include "util.h"
 
 void euler_rotate (double m[3][3], int axis, double angle) {
-  euler_rotate_sc(m, axis, sin(angle), cos(angle));
+  double s, c;
+
+  dsincos(angle, &s, &c);
+  euler_rotate_sc(m, axis, s, c);
 }
 
 void euler_rotate_sc (double m[3][3], int axis, double sa, double ca) {
@@ -88,12 +91,19 @@ double v_renorm (double v[3]) {
   return nf;
 }
 
-void v_to_ad (double v[3], double *a, double *d) {
-  *a = atan2(v[1], v[0]);
-  *d = atan2(v[2], sqrt(v[0]*v[0]+v[1]*v[1]));
+void v_to_ad (double v[3], unsigned char flip, double *a, double *d) {
+  if(flip) {
+    *a = atan2(-v[1], -v[0]);
+    *d = atan2(v[2], -sqrt(v[0]*v[0]+v[1]*v[1]));
+  }
+  else {
+    *a = atan2(v[1], v[0]);
+    *d = atan2(v[2], sqrt(v[0]*v[0]+v[1]*v[1]));
+  }
 }
 
-void v_to_ad_dt (double v[3], double dvdt[3], double *dadt, double *dddt) {
+void v_to_ad_dt (double v[3], double dvdt[3], unsigned char flip,
+		 double *dadt, double *dddt) {
   double rsq;
   
   rsq = v[0]*v[0] + v[1]*v[1];
@@ -101,6 +111,9 @@ void v_to_ad_dt (double v[3], double dvdt[3], double *dadt, double *dddt) {
     *dadt = (v[0]*dvdt[1] - v[1]*dvdt[0]) / rsq;
     *dddt = (dvdt[2]*rsq - v[2]*(v[0]*dvdt[0] + v[1]*dvdt[1]))
       / ((rsq + v[2]*v[2])*sqrt(rsq));
+
+    if(flip)
+      *dddt *= -1;
   }
   else {
     /* Pole */
@@ -109,9 +122,15 @@ void v_to_ad_dt (double v[3], double dvdt[3], double *dadt, double *dddt) {
   }
 }
 
-void v_to_az (double v[3], double *a, double *z) {
-  *a = atan2(v[1], v[0]);
-  *z = atan2(sqrt(v[0]*v[0]+v[1]*v[1]), v[2]);
+void v_to_az (double v[3], unsigned char flip, double *a, double *z) {
+  if(flip) {
+    *a = atan2(-v[1], -v[0]);
+    *z = atan2(-sqrt(v[0]*v[0]+v[1]*v[1]), v[2]);
+  }
+  else {
+    *a = atan2(v[1], v[0]);
+    *z = atan2(sqrt(v[0]*v[0]+v[1]*v[1]), v[2]);
+  }
 }
 
 double v_angle_v (double u[3], double v[3]) {

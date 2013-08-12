@@ -27,10 +27,8 @@ void observer_init (struct observer *obs,
   obs->height = height;
 
   /* Geocentric location of observer */
-  sinphi = sin(latitude);
-  cosphi = cos(latitude);
-  sinlam = sin(longitude);
-  coslam = cos(longitude);
+  dsincos(latitude, &sinphi, &cosphi);
+  dsincos(longitude, &sinlam, &coslam);
 
   geoc(sinphi, cosphi, height, &u, &z);
 
