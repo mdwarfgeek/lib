@@ -322,6 +322,11 @@ double dtdb (double mjd,        /* TDB as MJD (but TT is adequate) */
 
 void dsincos (double a, double *s, double *c);
 
+/* -- fpcoord.c: focal plane coordinates -- */
+
+int vec2tp (double s[3], double tp[3], double *x, double *y);
+void tp2vec (double x, double y, double tp[3], double s[3]);
+
 /* -- geoc.c: geodetic to geocentric -- */
 
 void geoc (double sinphi,     /* sin, cos geodetic latitude */
@@ -392,7 +397,8 @@ void m_x_m (double a[3][3], double b[3][3], double c[3][3]);
 /* Normalises a vector, returns 1 / norm. */
 double v_renorm (double v[3]);
 
-/* Vector to spherical (-ha, delta) or (az, el) */
+/* Vector from/to spherical (-ha, delta) or (az, el) */
+void ad_to_v (double a, double d, double v[3]);
 void v_to_ad (double v[3], unsigned char flip, double *a, double *d);
 
 /* Vectors to time derivatives of spherical coordinates */

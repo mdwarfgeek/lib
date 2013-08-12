@@ -14,7 +14,7 @@ CFLAGS=-Wall -g -fPIC -I$(HOME)/include
 
 ### End constants section ###
 
-SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c geoc.c iers.c jpleph.c matvec.c observer.c prenut.c refract.c source.c strutil.c
+SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c observer.c prenut.c refract.c source.c strutil.c
 OBJS=${SRCS:%.c=%.o}
 
 TESTDSINCOS_SRCS=testdsincos.c
@@ -34,6 +34,9 @@ TESTREFRO_OBJS=${TESTREFRO_SRCS:%.c=%.o}
 
 TESTSUN_SRCS=testsun.c cvtunit.c util.c
 TESTSUN_OBJS=${TESTSUN_SRCS:%.c=%.o}
+
+TESTTP_SRCS=testtp.c cvtunit.c util.c
+TESTTP_OBJS=${TESTTP_SRCS:%.c=%.o}
 
 # Rules for building
 
@@ -67,6 +70,9 @@ testrefro: $(TESTREFRO_OBJS) liblfa.a
 testsun: $(TESTSUN_OBJS) liblfa.a
 	$(CC) -o testsun $(TESTSUN_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
 
+testtp: $(TESTTP_OBJS) liblfa.a
+	$(CC) -o testtp $(TESTTP_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
+
 clean:
 	rm -f $(OBJS) liblfa.a
 	rm -f $(TESTDSINCOS_OBJS) testdsincos
@@ -75,3 +81,4 @@ clean:
 	rm -f $(TESTPLAN_OBJS) testplan
 	rm -f $(TESTREFRO_OBJS) testrefro
 	rm -f $(TESTSUN_OBJS) testsun
+	rm -f $(TESTTP_OBJS) testtp

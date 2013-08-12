@@ -91,6 +91,19 @@ double v_renorm (double v[3]) {
   return nf;
 }
 
+void ad_to_v (double a, double d, double v[3]) {
+  double sa, ca, sd, cd;
+
+  /* Precompute these */
+  dsincos(a, &sa, &ca);
+  dsincos(d, &sd, &cd);
+
+  /* Unit vector of direction cosines */
+  v[0] = ca*cd;
+  v[1] = sa*cd;
+  v[2] = sd;
+}
+
 void v_to_ad (double v[3], unsigned char flip, double *a, double *d) {
   if(flip) {
     *a = atan2(-v[1], -v[0]);
