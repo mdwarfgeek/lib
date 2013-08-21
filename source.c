@@ -99,7 +99,7 @@ void source_elem (struct source *src,
     src->ma = lm;
 
     /* Compute mean motion */
-    aa *= aq * AU;
+    aa = aq * AU;
     src->nn = sqrt(GMSUN / (aa*aa*aa)) / DAY;
 
     break;
