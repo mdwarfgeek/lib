@@ -10,7 +10,7 @@
 int dtai_read (struct dtai_table *tab, char *filename) {
   FILE *fp;
   char fnbuf[1024], buf[1024], *p;
-  int len, rv;
+  int rv;
 
   double jd, val, mjdzero, scale;
 
@@ -36,7 +36,6 @@ int dtai_read (struct dtai_table *tab, char *filename) {
   /* Read sorted entries */
   while(fgets(buf, sizeof(buf), fp)) {
     p = sstrip(buf);
-    len = strlen(p);
 
     /* This format is not particularly machine friendly.  When parsing,
        we should really try to guard against anything they might change. */
