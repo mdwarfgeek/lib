@@ -52,6 +52,8 @@
 #define ERA2K  0.7790572732640      /* ERA at J2000.0 UT1 */
 #define ERADAY 0.00273781191135448  /* ERA increment relative to UT1 per Julian day */
 
+#define EOMEGA  (TWOPI * (1.0 + ERADAY))  /* Earth angular velocity, rads/day */
+
 /* Other astrophysical quantities */
 
 #define RSUN   6.95508e8         /* m, from Brown & Christensen-Dalsgaard 1998
@@ -216,6 +218,7 @@ struct observer {
 
   double tigop[3];         /* TIRS geocentric position vector, AU */
   double tigov[3];         /* TIRS geocentric velocity vector, AU/d */
+  double tigoa[3];         /* TIRS geocentric acceleration vector, AU/d/d */
 
   /* Frame bias, precession and nutation */
   double ang_pfb[NPNANG];  /* Frame bias and precession */
@@ -230,11 +233,14 @@ struct observer {
   /* Earth rotation and derived quantites */
   double era;              /* ERA (rad) */
   double erm[3][3];        /* Earth rotation matrix */
+  double dermdt[3][3];     /* Time derivative (/d) */
 
   double ctm[3][3];        /* Full GCRS - Topocentric matrix */
+  double dctmdt[3][3];     /* Time derivative (/d) */
 
   double gop[3];           /* GCRS geocentric position vector, AU */
-  double gov[3];           /* GCRS geocentric velocity vector, AU */
+  double gov[3];           /* GCRS geocentric velocity vector, AU/d */
+  double goa[3];           /* GCRS geocentric acceleration vector, AU/d/d */
 
   /* Solar-system ephemerides */
   double bep[3];           /* SSB to Earth, AU */
@@ -252,6 +258,7 @@ struct observer {
   double hop[3];           /* Heliocentre to observer, AU */
 
   double vab[3];           /* Observer velocity relative to SSB / c */
+  double aab[3];           /* Observer acceleration relative to SSB / c */
   double gab;              /* Lorentz factor */
 
   double hdist;            /* Modulus of "hop" vector, AU */
@@ -436,6 +443,7 @@ int observer_update (struct observer *obs,
 
 void observer_ast2obs (struct observer *obs,
 		       double *s,
+		       double *dsdt,
 		       double pr,
 		       unsigned char mask);
 
@@ -488,7 +496,9 @@ void refract_corr (double *refco, double tanz, double *refr, double *deriv);
    the refraction model itself above this point.  It is fine to pass the
    same vector for both arguments, in which case the input will be
    overwritten by the output. */
-void refract_vec (double *refco, unsigned char unref, double *vi, double *vo);
+void refract_vec (double *refco, unsigned char unref,
+		  double *vi, double *vo,
+		  double *dvidt, double *dvodt);
 
 /* -- source.c -- */
 

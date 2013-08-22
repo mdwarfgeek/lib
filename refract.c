@@ -70,22 +70,29 @@ void refract_corr (double *refco, double tanz, double *refr, double *deriv) {
    the refraction model itself.  It avoids use of transcendental functions
    by Taylor expanding. */
 
-void refract_vec (double *refco, unsigned char unref, double *vi, double *vo) {
-  double z;
-  double zsq, rsq, tansqzd, secsqzd;
+void refract_vec (double *refco, unsigned char unref,
+		  double *vi, double *vo, double *dvidt, double *dvodt) {
+  double z, dzdt;
+  double zsq, rezsq, rsq, tansqzd, secsqzd;
   int i;
-  double fac, refsum, dersum, wt;
+  double fac, zfac, refsum, dersum, wt, wtfac;
+
+  double drefsum, sdersum, dtansqzddt, dfacdt, dwtdt;
 
   /* Hold constant below about 3 degrees */
   z = vi[2];
-  if(z < 0.05)
+  dzdt = dvidt ? dvidt[2] : 0;
+  if(z < 0.05) {
     z = 0.05;
+    dzdt = 0;
+  }
 
   /* Compute tan^2 and sec^2 input zenith distance */
   zsq = z*z;
   rsq = vi[0]*vi[0] + vi[1]*vi[1];
-  tansqzd = rsq / zsq;
-  secsqzd = (rsq + zsq) / zsq;
+  rezsq = 1.0 / zsq;
+  tansqzd = rsq * rezsq;
+  secsqzd = (rsq + zsq) * rezsq;
 
   /* Use it to compute the polynomial (in tan^2 zd_in) parts of the
      refraction formula. */
@@ -96,14 +103,19 @@ void refract_vec (double *refco, unsigned char unref, double *vi, double *vo) {
     refsum = refco[i] + tansqzd * refsum;
     dersum = (2*i+1) * refco[i] + tansqzd * dersum;
   }
-  
-  if(unref)
+
+  if(unref) {
     /* Unrefracting is easy, formula is in observed ZD. */
+    wtfac = 1.0;
     wt = refsum;
-  else
+  }
+  else {
     /* Compute -(f/f')/tan(zd_in) ~= -delta/tan(zd_in)
-       where delta=(zd_out-zd_in), for one Newton-Raphson iteration. */
-    wt = -refsum / (1.0 + dersum * secsqzd);
+       where delta=(zd_out-zd_in), for one Newton-Raphson iteration.
+       Velocity is approximated using just leading order terms in refsum. */
+    wtfac = 1.0 / (1.0 + dersum * secsqzd);
+    wt = -refsum * wtfac;
+  }
 
   /* The vector of direction cosines we want out is:
      cos(az)*sin(zd_out)
@@ -120,9 +132,43 @@ void refract_vec (double *refco, unsigned char unref, double *vi, double *vo) {
 
   /* Compute scale factor for x,y */
   fac = 1.0 + wt - 0.5*wt*wt*tansqzd;
+  
+  /* Compute scale factor for z */
+  zfac = wt * (1.0 + 0.5*wt);
 
   /* Compute refracted vector */
   vo[0] = vi[0] * fac;
   vo[1] = vi[1] * fac;
-  vo[2] = vi[2] - z * wt * (1.0 + 0.5*wt) * tansqzd;
+  vo[2] = vi[2] - z * zfac * tansqzd;
+
+  /* Compute velocity vector if requested */
+  if(dvidt && dvodt) {
+    /* First derivative of "refsum" with respect to tan^2 zd 
+       and derivative of "dersum" with respect to tan^2 zd */
+    drefsum = (NREFCO-1)*refco[NREFCO-1];
+    sdersum = (2*NREFCO-1)*(NREFCO-1)*refco[NREFCO-1];
+
+    for(i = NREFCO-2; i > 0; i--) {
+      drefsum = i * refco[i] + tansqzd * drefsum;
+      sdersum = (2*i+1)*i * refco[i] + tansqzd * sdersum;
+    }
+
+    /* Derivatives of expressions above */
+    dtansqzddt = 2.0*((vi[0]*dvidt[0] + vi[1]*dvidt[1]) * rezsq - tansqzd * dzdt / z);
+
+    if(unref)
+      dwtdt = drefsum * dtansqzddt;
+    else {
+      dwtdt = -wtfac * (drefsum +
+			wt * (dersum + sdersum*secsqzd)) * dtansqzddt;
+    }
+
+    dfacdt = dwtdt - wt*(dwtdt*tansqzd + 0.5*wt*dtansqzddt);
+
+    dvodt[0] = dvidt[0] * fac + vi[0] * dfacdt;
+    dvodt[1] = dvidt[1] * fac + vi[1] * dfacdt;
+    dvodt[2] = dvidt[2] - dzdt *               zfac * tansqzd
+                        -    z * dwtdt * (1.0 + wt) * tansqzd
+                        -    z *               zfac * dtansqzddt;
+  }
 }

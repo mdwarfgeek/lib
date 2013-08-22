@@ -262,7 +262,7 @@ void source_place (struct observer *obs,
   }
 
   if(mask > (TR_MOTION | TR_PLX))
-    observer_ast2obs(obs, s, pr, mask);
+    observer_ast2obs(obs, s, dsdt, pr, mask);
 
   if(pr_r)
     *pr_r = pr;

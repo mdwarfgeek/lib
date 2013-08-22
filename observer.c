@@ -71,7 +71,8 @@ int observer_update (struct observer *obs,
   int rv, i;
   double jdtk, jctk, sp;
 
-  double tmp[3][3];
+  double sera, cera;
+  double tmpp[3][3], tmpv[3][3];
 
   double tei, dteidt, tev[3], dtevdt[3];
 
@@ -114,9 +115,14 @@ int observer_update (struct observer *obs,
     mt_x_v(obs->pmm, obs->itgop, obs->tigop);
 
     /* Geocentre-Observer velocity vector in TIRS */
-    obs->tigov[0] = -obs->tigop[1] * TWOPI * (1.0 + ERADAY);
-    obs->tigov[1] =  obs->tigop[0] * TWOPI * (1.0 + ERADAY);
+    obs->tigov[0] = -obs->tigop[1] * EOMEGA;
+    obs->tigov[1] =  obs->tigop[0] * EOMEGA;
     obs->tigov[2] = 0;
+
+    /* Geocentre-Observer acceleration vector in TIRS */
+    obs->tigoa[0] = -obs->tigop[0] * EOMEGA*EOMEGA;
+    obs->tigoa[1] = -obs->tigop[1] * EOMEGA*EOMEGA;
+    obs->tigoa[2] = 0;
   }
 
   if(mask & OBSERVER_UPDATE_NUT)
@@ -146,18 +152,32 @@ int observer_update (struct observer *obs,
 			  1.0);
     
     /* Earth rotation matrix = R_3(era) */
+    dsincos(obs->era, &sera, &cera);
+
     m_identity(obs->erm);
-    euler_rotate(obs->erm, 3, obs->era);
+    euler_rotate_sc(obs->erm, 3, sera, cera);
+
+    /* Time derivative */
+    obs->dermdt[0][0] = obs->dermdt[1][1] = TWOPI * (1.0+ERADAY);
+    obs->dermdt[0][1] = obs->dermdt[1][0] = obs->dermdt[2][1] = 0.0;
+    obs->dermdt[0][2] = obs->dermdt[1][2] = obs->dermdt[2][0] = 0.0;
+    obs->dermdt[2][2] = 0.0;
+
+    euler_rotate_sc(obs->dermdt, 3, cera, -sera);
 
     /* GCRS - TIRS */
-    m_x_m(obs->erm, obs->cim, tmp);
+    m_x_m(obs->erm, obs->cim, tmpp);
+    m_x_m(obs->dermdt, obs->cim, tmpv);  /* neglects d(cim)/dt */
 
     /* Geocentre-Observer position and velocity in GCRS */
-    mt_x_v(tmp, obs->tigop, obs->gop);
-    mt_x_v(tmp, obs->tigov, obs->gov);
+    mt_x_v(tmpp, obs->tigop, obs->gop);
+    mt_x_v(tmpp, obs->tigov, obs->gov);
+    mt_x_v(tmpp, obs->tigoa, obs->goa);
 
     /* GCRS - Topocentric (-h, delta) */
-    m_x_m(obs->lpm, tmp, obs->ctm);
+    m_x_m(obs->lpm, tmpp, obs->ctm);
+    m_x_m(obs->lpm, tmpv, obs->dctmdt);  /* neglects d(lpm)/dt, but
+                                            pretty good approx. */
   }
 
   if(mask & OBSERVER_UPDATE_TDB && obs->tetab) {
@@ -213,6 +233,7 @@ int observer_update (struct observer *obs,
 
       /* Aberration vector (also used for Doppler shift) */
       obs->vab[i] = (obs->bev[i] + obs->gov[i]) * AU / (DAY*LIGHT);
+      obs->aab[i] = obs->goa[i] * AU / (DAY*LIGHT);  /* diurnal only for now */
     }
 
     /* Lorentz factor */
@@ -230,11 +251,19 @@ int observer_update (struct observer *obs,
   return(0);
 }
 
+/* Notes on ast2obs: the velocity treatment is still quite approximate.
+   Earth rotation and refraction are fully included, diurnal aberration
+   is partly included (the acceleration is the most significant effect),
+   but other contributions from light deflection, aberration, and the
+   other components of the celestial to terrestrial matrix are neglected
+   (of these, probably the only important one is precession). */
+
 void observer_ast2obs (struct observer *obs,
 		       double *s,
+		       double *dsdt,
 		       double pr,
 		       unsigned char mask) {    /* parts we want */
-  double tmp[3];
+  double tmpa[3], tmpb[3];
   int i;
 
   double q[3], bdefl, defl, fe, fq;
@@ -279,28 +308,53 @@ void observer_ast2obs (struct observer *obs,
     /* Apply aberration */
     for(i = 0; i < 3; i++)
       s[i] = sab*s[i] + vab*obs->vab[i];
+
+    if(dsdt)  /* time derivatives of multipliers and
+                 Earth-SSB velocity neglected */
+      for(i = 0; i < 3; i++)
+	dsdt[i] = sab*dsdt[i] + vab*obs->aab[i];
   }
 
   /* "Local GCRS" -> Topocentric (-h, delta) */
   if(mask & TR_TOPO) {
-    m_x_v(obs->ctm, s, tmp);
-    v_copy(s, tmp);
+    /* Do the velocity first, we need the original 's' for it. */
+    if(dsdt) {
+      /* Product rule */
+      m_x_v(obs->ctm, dsdt, tmpa);
+      m_x_v(obs->dctmdt, s, tmpb);
+
+      for(i = 0; i < 3; i++)
+	dsdt[i] = tmpa[i] + tmpb[i];
+    }
+
+    m_x_v(obs->ctm, s, tmpa);
+    v_copy(s, tmpa);
   }
 
   /* Latitude of observer */
   if(mask & TR_LAT || mask & TR_REFRO) {
-    m_x_v(obs->phm, s, tmp);
-    v_copy(s, tmp);
+    m_x_v(obs->phm, s, tmpa);
+    v_copy(s, tmpa);
+
+    if(dsdt) {
+      m_x_v(obs->phm, dsdt, tmpb);
+      v_copy(dsdt, tmpb);
+    }
   }
 
   /* Refraction */
   if(mask & TR_REFRO) {
-    refract_vec(obs->refco, 0, s, s);
+    refract_vec(obs->refco, 0, s, s, dsdt, dsdt);
 
     /* Take latitude off again if requested */
     if(!(mask & TR_LAT)) {
-      mt_x_v(obs->phm, s, tmp);
-      v_copy(s, tmp);
+      mt_x_v(obs->phm, s, tmpa);
+      v_copy(s, tmpa);
+
+      if(dsdt) {
+	mt_x_v(obs->phm, dsdt, tmpb);
+	v_copy(dsdt, tmpb);
+      }
     }
   }
 }
@@ -323,7 +377,7 @@ void observer_obs2ast (struct observer *obs,
     }
 
     /* Take off refraction */
-    refract_vec(obs->refco, 1, s, s);
+    refract_vec(obs->refco, 1, s, s, NULL, NULL);
   }
 
   /* Latitude of observer */
