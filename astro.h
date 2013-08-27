@@ -371,6 +371,19 @@ void euler_rotate_sc (double m[3][3], int axis, double sa, double ca);
   (m)[0][2] = (m)[1][2] = (m)[2][0] = 0.0;	\
 }
 
+/* Matrix transpose */
+#define m_transpose(a, b) {			\
+  (b)[0][0] = (a)[0][0];			\
+  (b)[0][1] = (a)[1][0];			\
+  (b)[0][2] = (a)[2][0];			\
+  (b)[1][0] = (a)[0][1];			\
+  (b)[1][1] = (a)[1][1];			\
+  (b)[1][2] = (a)[2][1];			\
+  (b)[2][0] = (a)[0][2];			\
+  (b)[2][1] = (a)[1][2];			\
+  (b)[2][2] = (a)[2][2];			\
+}
+
 /* v' = M v */
 void m_x_v (double m[3][3], double vi[3], double vo[3]);
 
