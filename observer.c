@@ -258,6 +258,10 @@ int observer_update (struct observer *obs,
    other components of the celestial to terrestrial matrix are neglected
    (of these, probably the only important one is precession). */
 
+/* The topocentric vectors follow Wallace (2002), and are in a right
+   handed system where azimuth = 0 is South (contrasted with the
+   conventional left-handed system with 0 North). */
+
 void observer_ast2obs (struct observer *obs,
 		       double *s,
 		       double *dsdt,
