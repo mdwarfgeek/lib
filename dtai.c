@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <limits.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "util.h"
 
 int dtai_read (struct dtai_table *tab, char *filename) {

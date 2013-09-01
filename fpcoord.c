@@ -3,7 +3,7 @@
 #include <math.h>
 #include <float.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "cvtunit.h"
 #include "util.h"
 

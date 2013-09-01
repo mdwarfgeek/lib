@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "util.h"
 
 #define MAX_SECZ 11.4737  /* 85 degrees */

@@ -5,7 +5,7 @@
 #include <limits.h>
 #include <math.h>
 
-#include "astro.h"
+#include "lfa.h"
 
 char *extractstr (char *str, int len,
 		  int f, int l) {

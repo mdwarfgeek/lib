@@ -9,7 +9,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "cvtunit.h"
 #include "tcutil.h"
 #include "util.h"

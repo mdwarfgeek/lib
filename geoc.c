@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "util.h"
 
 /* Geodetic coordinates to geocentric, WGS84.

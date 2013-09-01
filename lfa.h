@@ -1,5 +1,5 @@
-/* astro.h: positional astronomy subroutines.
-            various source files, see below. */
+/* lfa.h: positional astronomy subroutines.
+          various source files, see below. */
 
 /* TODO: fix up implementation in iers.c and other ephemeris type routines
          to ensure correct handling of running off the end.
@@ -9,8 +9,8 @@
 	 svr4/bsd/c99 routine where applicable, and investigate ways
 	 to implement robust vector norms. */
 
-#ifndef ASTRO_H
-#define ASTRO_H
+#ifndef LFA_H
+#define LFA_H
 
 #include <stdint.h>
 
@@ -541,4 +541,4 @@ int extractintfrac (char *str, int len,
 		    int *ival, double *fval);
 char *sstrip (char *str);
 
-#endif  /* ASTRO_H */
+#endif  /* LFA_H */

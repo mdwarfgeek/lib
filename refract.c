@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "cvtunit.h"
 #include "util.h"
 

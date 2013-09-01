@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "astro.h"
+#include "lfa.h"
 #include "util.h"
 
 static void cheby (double tc, double pfac, double vfac,
