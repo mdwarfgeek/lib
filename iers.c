@@ -13,6 +13,8 @@ int iers_open (struct iers_table *tab,
 	       char *filename) {
   char fnbuf[BUFSIZE], buf[BUFSIZE];
   double mjd;
+  int rv;
+  long off;
 
   /* Get default file from environment if none specified */
   if(!filename) {
@@ -38,8 +40,10 @@ int iers_open (struct iers_table *tab,
 
   tab->recsize = strlen(buf);
 
-  if(extractdouble(buf, tab->recsize, 8, 15, &mjd))
+  if(extractdouble(buf, tab->recsize, 8, 15, &mjd)) {
+    fclose(tab->fp);
     return(-2);
+  }
 
   tab->mjd_start = mjd;
 
@@ -50,17 +54,94 @@ int iers_open (struct iers_table *tab,
   }
 
   /* Sanity check that record lengths are the same */
-  if(strlen(buf) != tab->recsize)
+  if(strlen(buf) != tab->recsize) {
+    fclose(tab->fp);
     return(-2);
+  }
 
-  if(extractdouble(buf, tab->recsize, 8, 15, &mjd))
+  if(extractdouble(buf, tab->recsize, 8, 15, &mjd)) {
+    fclose(tab->fp);
     return(-2);
+  }
 
   tab->mjd_step = mjd - tab->mjd_start;
 
-  /* Would be desirable to also seek to the end to find out what the
-     range in the file is, but this could potentially be slow, so is
-     avoided. */
+  if(tab->mjd_step <= 0) {
+    fclose(tab->fp);
+    return(-2);
+  }
+
+  /* Seek to last record */
+  rv = fseek(tab->fp, -tab->recsize, SEEK_END);
+  if(rv < 0) {
+    fclose(tab->fp);
+    return(-1);
+  }
+
+  /* Where are we? */
+  off = ftell(tab->fp);
+  if(off < 0) {
+    fclose(tab->fp);
+    return(-1);
+  }
+
+  tab->lrec = off / tab->recsize;
+
+  /* Adjust file pointer as necessary in case there is truncation
+     during the last record.  This is a non-critical problem. */
+  off -= ((long) tab->lrec) * tab->recsize;
+
+  if(off > 0) {
+    rv = fseek(tab->fp, -off, SEEK_CUR);
+    if(rv < 0) {
+      fclose(tab->fp);
+      return(-1);
+    }
+  }
+
+  /* Try to discover where there are useful measurements. */
+  for(;;) {
+    /* Read last record to check range */
+    if(!fgets(buf, sizeof(buf), tab->fp)) {
+      fclose(tab->fp);
+      return(-1);
+    }
+    
+    /* Sanity check that record lengths are the same */
+    if(strlen(buf) != tab->recsize) {
+      fclose(tab->fp);
+      return(-2);
+    }
+
+    /* Column 17 blank = no prediction, so wait until it's not */
+    if(!isspace(buf[16]))
+      break;
+
+    /* Seek back, if we can */
+    tab->lrec--;
+    if(tab->lrec <= 0)
+      break;
+
+    rv = fseek(tab->fp, -2*tab->recsize, SEEK_CUR);
+    if(rv < 0) {
+      fclose(tab->fp);
+      return(-1);
+    }
+  }
+
+  /* We should now be pointing at the last record with data. */
+  if(extractdouble(buf, tab->recsize, 8, 15, &mjd)) {
+    fclose(tab->fp);
+    return(-2);
+  }
+
+  /* Sanity check MJD is what we think it should be.  Dates in
+     files are given to 2 dp, so we require agreement to that
+     level. */
+  if(fabs(tab->mjd_start+tab->mjd_step*tab->lrec - mjd) > 0.01) {
+    fclose(tab->fp);
+    return(-2);
+  }
 
   /* Init a few things */
   tab->bufrec = -1;
@@ -144,20 +225,28 @@ static int iers_read (struct iers_table *tab,
 /* Routine to fetch and interpolate TT-UT1 for a given UTC (as MJD).
    TT is used in the output to avoid discontinuities due to leap
    seconds.  While technically the input argument should be UTC, it
-   doesn't really matter what is used for most applications. */
-
-/* XXX - EOF (and before start) behaviour needs fixing */
+   doesn't really matter what is used for most applications.
+   Running off the ends of the table is allowed, and will cause
+   the routine to return 1 rather than the usual value of 0. */
 
 int iers_fetch (struct iers_table *tab, double mjd,
 		double *dut1, double *xp, double *yp, double *dxnut, double *dynut) {
   struct iers_entry *p;
-  int trec, f, n, rv;
-  double a, b;
+  int trec, clamp = 0, f, n, rv;
+  double a = 0, b = 0;
 
-  /* Record before target */
+  /* Record before target.  Clamped to be within file range. */
   trec = floor((mjd - tab->mjd_start) / tab->mjd_step);
-  if(trec < 0)
+  if(trec < 0) {
     trec = 0;
+    a = 1;
+    clamp = 1;
+  }
+  else if(trec > (tab->lrec-1)) {
+    trec = tab->lrec-1;
+    b = 1;
+    clamp = 1;
+  }
 
   /* Do we currently have it in memory? */
   if(trec != tab->bufrec) {  /* nope */
@@ -191,8 +280,10 @@ int iers_fetch (struct iers_table *tab, double mjd,
   }
 
   /* Interpolate, linear only for now */
-  a = (tab->buf[1].mjd - mjd) / tab->h;
-  b = (mjd - tab->buf[0].mjd) / tab->h;
+  if(!clamp) {
+    a = (tab->buf[1].mjd - mjd) / tab->h;
+    b = (mjd - tab->buf[0].mjd) / tab->h;
+  }
 
   if(dut1)
     *dut1  = (a * tab->buf[0].dut1  +  b * tab->buf[1].dut1);
@@ -205,6 +296,6 @@ int iers_fetch (struct iers_table *tab, double mjd,
   if(dxnut)
     *dynut = (a * tab->buf[0].dynut +  b * tab->buf[1].dynut);
 
-  return(0);
+  return(clamp);  /* let user know if we ran off end */
 }
 

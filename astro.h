@@ -170,6 +170,7 @@ struct iers_entry {
 struct iers_table {
   FILE *fp;
   int recsize;
+  int lrec;     /* last record */
   double mjd_start;
   double mjd_step;
 
