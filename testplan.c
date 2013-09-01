@@ -2,9 +2,11 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "astro.h"
@@ -15,7 +17,7 @@
 int main (int argc, char *argv[]) {
   struct dtai_table dtab;
   struct iers_table itab;
-  struct jpleph_table jtab, ttab;
+  struct jpleph_table jtab, ttab, *tptr = NULL;
   struct source src;
   struct observer obs;
 
@@ -62,11 +64,17 @@ int main (int argc, char *argv[]) {
     fatal(1, "jpleph_open: %d", rv);
 
   rv = jpleph_open(&ttab, 1, (char *) NULL);
-  if(rv)
+  if(rv == -2) {
+    printf("Time ephemeris problem, continuing without\n");
+    tptr = NULL;
+  }
+  else if(rv)
     fatal(1, "jpleph_open: %d", rv);
+  else
+    tptr = &ttab;
 
   /* Setup observer structure */
-  observer_init(&obs, &jtab, &ttab, &itab, longitude, latitude, height);
+  observer_init(&obs, &jtab, tptr, &itab, longitude, latitude, height);
 
   refract_const(temperat, humidity, pressure, wavelength, height,
 		obs.refco);
@@ -115,7 +123,7 @@ int main (int argc, char *argv[]) {
     if(!running || tvdiff.tv_sec >= 10) {
       rv = observer_update(&obs, tt, OBSERVER_UPDATE_ALL);
       if(rv)
-	fatal(1, "observer_update: %d", rv);
+	fatal(1, "observer_update: %d (%s)", rv, strerror(errno));
 
       tvslow = tv;
     }
@@ -127,6 +135,7 @@ int main (int argc, char *argv[]) {
     }
 
     a = obs.era+obs.longitude;
+    a = ranorm(a);
 
     base10_to_60(utcdf*TWOPI, UNIT_RAD, astr, sizeof(astr), " ", "", 1, UNIT_HR);
     base10_to_60(a, UNIT_RAD, dstr, sizeof(dstr), " ", "", 1, UNIT_HR);
