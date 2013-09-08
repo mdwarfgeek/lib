@@ -38,7 +38,7 @@ void dsincos (double a, double *s, double *c) {
 #else
       : "m" (a)
 #endif
-      : "ax", "st", "st(1)");
+      : "ax", "st", "st(1)", "cc");
 
 #else
   /* Generic C implementation using library functions */
