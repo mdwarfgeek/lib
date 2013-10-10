@@ -12,8 +12,12 @@ char *extractstr (char *str, int len,
   static char tmp[BUFSIZE];
   int i, n;
 
-  /* Check args */
-  if(f < 1 || f >= l || l > len)
+  /* Clamp length to range */
+  if(l > len)
+    l = len;
+
+  /* Check args are ok */
+  if(f < 1 || f >= l)
     return((char *) NULL);
 
   /* Compute length excluding terminating NUL */
@@ -40,6 +44,23 @@ int extractdouble (char *str, int len,
 
   /* Now convert */
   *val = strtod(p, &ep);
+  if(ep == p)
+    return(-1);
+
+  return(0);
+}
+
+int extractint (char *str, int len,
+		int f, int l,
+		int *val) {
+  static char *p, *ep;
+
+  p = extractstr(str, len, f, l);
+  if(!p)
+    return(-1);
+
+  /* Now convert */
+  *val = strtol(p, &ep, 0);
   if(ep == p)
     return(-1);
 

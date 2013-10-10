@@ -16,8 +16,6 @@ void observer_init (struct observer *obs,
   double sinphi, cosphi, sinlam, coslam;
   double u, z;
 
-  double ang[NPNANG];
-
   obs->jpltab = jpltab;
   obs->tetab = tetab;
   obs->iertab = iertab;
@@ -48,14 +46,6 @@ void observer_init (struct observer *obs,
 
   /* Minimum impact parameter for light deflection: solar radius in AU */
   obs->minbdefl = RSUN / AU;
-
-  /* GCRS to mean ecliptic of J2000, for lazy people */
-  pfb06ang(0.0, ang);
-
-  m_identity(obs->eclm);
-  euler_rotate(obs->eclm, 3,  ang[PNANG_GAM]);
-  euler_rotate(obs->eclm, 1,  ang[PNANG_PHI]);
-  euler_rotate(obs->eclm, 3, -ang[PNANG_PSI]);
 
   /* These are optional, so set default values that do nothing */
   obs->dut1 = 0;
@@ -180,7 +170,7 @@ int observer_update (struct observer *obs,
                                             pretty good approx. */
   }
 
-  if(mask & OBSERVER_UPDATE_TDB && obs->tetab) {
+  if((mask & OBSERVER_UPDATE_TDB) && obs->tetab) {
     /* Fetch time ephemeris integral and Earth velocity vector */
     rv = jpleph_fetch(obs->tetab, tt, TIMEEPH_TEI, &tei, &dteidt);
     if(rv < 0)

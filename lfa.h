@@ -12,6 +12,7 @@
 #ifndef LFA_H
 #define LFA_H
 
+#include <stdio.h>  /* for FILE */
 #include <stdint.h>
 
 /* -- Physical, Mathematical and Astronomical constants -- */
@@ -202,8 +203,6 @@ struct observer {
 
   double refco[NREFCO];    /* refraction coefficients */
 
-  double eclm[3][3];        /* GCRS to mean ecliptic of J2000 */
-
   /* Time */
   double tt;
   double tdb;
@@ -268,17 +267,18 @@ struct observer {
 };
 
 struct source {
+  /* Name (not touched at all internally, use is optional) */
+  char name[128];
+
   /* What type of source is it?  The JPLEPH constants defined above
      are used for sources covered by the JPL ephemerides, so these
      constants must not overlap. */
   unsigned char type;
 #define SOURCE_STAR       16
-#define SOURCE_ELEM_MAJOR 17  /* major planet: a, e, L, n */
-#define SOURCE_ELEM_MINOR 18  /* minor planet: a, e, M */
-#define SOURCE_ELEM_COMET 19  /* comet: q, e */
-#define SOURCE_ELEM_SAT   20  /* geocentric (satellite) */
+#define SOURCE_ELEM       17
 
-  /* For stars, unit vector and velocity at catalogue epoch */
+  /* For stars, unit vector and velocity at catalogue epoch.  For elements,
+     heliocentric position and velocity at reference epoch. */
   double ref_n[3];
   double ref_dndt[3];
 
@@ -287,21 +287,42 @@ struct source {
   double ref_tdb;
 
   /* Parallax or 1/distance */
-  double pr;       /* 1 / AU */
+  double pr;        /* 1 / AU */
 
-  /* Orbital elements */
-  double aq;   /* semimajor axis or perihelion distance */
-  double ecc;  /* eccentricity */
-  double ma;   /* mean anomaly at reference epoch */
-  double nn;   /* mean motion */
-
-  double rot[3][3];  /* combined rotation matrix */
+  /* Universal orbital elements */
+  double mu;        /* G(M_1+M_2), AU^3 / day^2 */
+  double alpha;     /* total energy, mu/a, AU^2 / day^2 */
+  double sqrtalpha; /* sqrt(|alpha|) */
+  double rref;      /* heliocentric distance at reference epoch (ref_tdb), AU */
+  double muorref;   /* mu / rref */
+  double rvref;     /* scalar product of position and velocity vectors at ref epoch */
+  double psi;       /* universal eccentric anomaly, last value to speed up iterations */
 };
 
-/* -- Miscellaneous useful macros -- */
+/* -- Miscellaneous useful macros and inline functions -- */
 
 /* Wrap angle to [0, TWOPI) */
 #define ranorm(a) ((a) >= 0 ? fmod((a), TWOPI) : TWOPI+fmod((a), TWOPI))
+
+/* Evaluate multiple polynomials simultaneously using Horner's method.  The
+   array "p" is two dimensional, the most rapidly varying dimension is "nout"
+   and the less rapid is "ncoeff" - i.e. the coefficients for the same
+   degree in the outputs are next to each other.  Degree decreases through
+   the array.  The weird arrangement of the coefficients and loops are to
+   make sure it can be vectorized.  Needs to be inline so the compiler
+   notices the alignment and padding requirements on the array "p" when it
+   is created.  The optimizer should unroll both loops, or at least the
+   inner one. */
+#define sum_poly(x, p, nout, ncoeff, r) {	\
+  int iout, icoeff, i;				\
+						\
+  for(i = 0; i < (nout); i++)			\
+    (r)[i] = (p)[i];				\
+						\
+  for(icoeff = 1; icoeff < (ncoeff); icoeff++)	\
+    for(iout = 0; iout < (nout); iout++, i++)	\
+      (r)[iout] = (r)[iout] * (x) + (p)[i];	\
+}
 
 /* -- airmass.c: Airmass -- */
 
@@ -432,6 +453,15 @@ void v_to_az (double v[3], unsigned char flip, double *a, double *z);
 /* Angle between two vectors, robust method */
 double v_angle_v (double u[3], double v[3]);
 
+/* -- mjd.c: generic Julian date functions -- */
+
+int date2mjd (int yr, int mn, int dy);
+
+/* -- mpc.c: routines to read MPC 1-line format -- */
+
+int mpc_read (char *filename, struct source **srclist, int *nsrc);
+int mpc_convert (char *line, struct source *src);
+
 /* -- observer.c: observer structure setup and update -- */
 
 void observer_init (struct observer *obs,
@@ -465,6 +495,10 @@ void observer_obs2ast (struct observer *obs,
 		       double *s,
 		       double pr,
 		       unsigned char mask);
+
+/* -- parallactic.c: parallactic angle -- */
+
+double parallactic (double sinphi, double cosphi, double v[3]);
 
 /* -- prenut.c: precession and nutation -- */
 
@@ -516,11 +550,28 @@ void refract_vec (double *refco, unsigned char unref,
 
 /* -- source.c -- */
 
+void source_init (void);
+
 void source_star (struct source *src,
 		  double ra, double de,      /* radians */
 		  double pmra, double pmde,  /* sky projected, arcsec/yr */
 		  double plx, double vrad,   /* arcsec, km/s */
 		  double epoch);
+
+#define SOURCE_ELEM_MAJOR  1
+#define SOURCE_ELEM_MINOR  2
+#define SOURCE_ELEM_COMET  3
+
+void source_elem (struct source *src,
+		  unsigned char eltype,
+		  double epoch,
+		  double incl,
+		  double anode,
+		  double longperi,
+		  double aq,
+		  double ecc,
+		  double lm,
+		  double nn);
 
 void source_place (struct observer *obs,
 		   struct source *src,
@@ -536,9 +587,16 @@ char *extractstr (char *str, int len,
 int extractdouble (char *str, int len,
 		   int f, int l,
 		   double *val);
+int extractint (char *str, int len,
+		int f, int l,
+		int *val);
 int extractintfrac (char *str, int len,
 		    int f, int l,
 		    int *ival, double *fval);
 char *sstrip (char *str);
+
+/* -- stumpff.c: Stumpff functions */
+
+void stumpff (double s, double alpha, double sqrtalpha, double *c);
 
 #endif  /* LFA_H */

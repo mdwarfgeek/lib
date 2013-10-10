@@ -6,32 +6,25 @@
 #include "cvtunit.h"
 #include "util.h"
 
-static double ang_sum_poly (double t, const double *poly, int npoly) {
-  double ang = 0;
-  int ipoly;
-
-  for(ipoly = npoly-1; ipoly >= 0; ipoly--)
-    ang = ang * t + poly[ipoly];
-
-  return(fmod(ang, AS_PER_REV) * AS_TO_RAD);
-}
-
 void pfb06ang (double t, double ang[NPNANG]) {
   /* Precession and frame bias, IAU 2006, Fukushima-Williams angles.
      Coefficients from Hilton et al. 2006 */
-  static const double prec_coef[NPNANG][6] = {
-    {    -0.052928,   10.556378,  0.4932044, -0.00031238, -2.788e-6,   2.60e-8  }, /* gam */
-    { 84381.412819,  -46.811016,  0.0511268,  0.00053289, -4.40e-7,   -1.76e-8  }, /* phi */
-    {    -0.041775, 5038.481484,  1.5584175, -0.00018522, -2.6452e-5, -1.48e-8  }, /* psi */
-    { 84381.406000,  -46.836769, -0.0001831,  0.00200340, -5.76e-7,   -4.34e-8  }  /* epsa */
+  static const double prec_coef[] = 
+    /* gam             phi            psi             epsa */
+    {  2.60e-8,       -1.76e-8,      -1.48e-8,       -4.34e-8,
+      -2.788e-6,      -4.40e-7,      -2.6452e-5,     -5.76e-7,
+      -0.00031238,     0.00053289,   -0.00018522,     0.00200340,
+       0.4932044,      0.0511268,     1.5584175,     -0.0001831,
+      10.556378,     -46.811016,   5038.481484,     -46.836769,
+      -0.052928,   84381.412819,     -0.041775,   84381.406000
   };
 
-  int np, iang;
+  int iang;
 
-  np = sizeof(prec_coef)/sizeof(prec_coef[0]);
+  sum_poly(t, prec_coef, NPNANG, sizeof(prec_coef)/(NPNANG*sizeof(prec_coef[0])), ang);
 
   for(iang = 0; iang < NPNANG; iang++)
-    ang[iang] = ang_sum_poly(t, prec_coef[iang], np);
+    ang[iang] = fmod(ang[iang], AS_PER_REV) * AS_TO_RAD;
 }
 
 void nut00b (double t,
@@ -143,7 +136,7 @@ void nut00b (double t,
 
   /* Secular component of CIO locator */
   static const double sxy_coef[6] =
-    { 0.0000940, 0.00380865, -0.00012268, -0.07257411,  2.798e-5, 1.562e-5 };
+    { 1.562e-5, 2.798e-5, -0.07257411, -0.00012268, 0.00380865, 0.0000940 };
 
   double arg, sinarg, cosarg;
   double dpsi, deps;
@@ -151,7 +144,7 @@ void nut00b (double t,
   int iarg, narg;
   int ils, nls;
 
-  double scs, tsq;
+  double scs = 0, tsq;
 
   /* Nutation, IAU 2000B */
   dpsi = 0.0;
@@ -200,7 +193,8 @@ void nut00b (double t,
 
   if(sxy_r) {
     /* Compute secular component of CIO locator */
-    scs = ang_sum_poly(t, sxy_coef, sizeof(sxy_coef)/sizeof(sxy_coef[0]));
+    sum_poly(t, sxy_coef, 1, sizeof(sxy_coef)/sizeof(sxy_coef[0]), &scs);
+    scs = fmod(scs, AS_PER_REV) * AS_TO_RAD;
 
     /* Compute periodic components of CIO locator.  This series
        is based on the one provided in IERS TN 36, but has been

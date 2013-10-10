@@ -6,6 +6,25 @@
 #include "cvtunit.h"
 #include "util.h"
 
+#define KEPLER_PREC    1.0e-13
+#define KEPLER_MAXITER 20
+
+static double eclm[3][3];
+
+/* Init runtime constants, needed before calls to use elements */
+
+void source_init (void) {
+  double ang[NPNANG];
+
+  /* GCRS to mean ecliptic of J2000, for lazy people */
+  pfb06ang(0.0, ang);
+
+  m_identity(eclm);
+  euler_rotate(eclm, 3,  ang[PNANG_PSI]);
+  euler_rotate(eclm, 1, -ang[PNANG_PHI]);
+  euler_rotate(eclm, 3, -ang[PNANG_GAM]);
+}
+
 /* Creates source structure from star coordinates */
 
 void source_star (struct source *src,
@@ -59,6 +78,13 @@ void source_star (struct source *src,
 
 /* Creates source structure from Keplerian osculating elements */
 
+#ifdef TEST
+void sla_el2ue_ (double *date, int *jform,
+		 double *epoch, double *orbinc, double *anode, double *perih,
+		 double *aorq, double *e, double *aorl, double *dm,
+		 double *u, int *jstat);
+#endif
+
 void source_elem (struct source *src,
 		  unsigned char eltype,
 		  double epoch,
@@ -69,45 +95,138 @@ void source_elem (struct source *src,
 		  double ecc,
 		  double lm,
 		  double nn) {
-  double aa;
+  double tmp[3][3], rot[3][3], r[3], v[3];
+  double ma, ea, se, ce, st, ct, f, df, delta;
+  double sef, a, b, fac;
+  int i;
+
+#ifdef TEST
+  double u[13];
+  int jform, jstat;
+
+  jform = eltype;
+
+  sla_el2ue_(&epoch, &jform,
+	     &epoch, &incl, &anode, &longperi,
+	     &aq, &ecc, &lm, &nn,
+	     u, &jstat);
+
+  fprintf(stderr,
+	  "SLALIB universal elements: r_0=(%le, %le, %le) v_0=(%le, %le, %le) alpha=%le r_0=%le\n",
+	  u[3], u[4], u[5],
+	  u[6]/58.1324409, u[7]/58.1324409, u[8]/58.1324409,  /* canonical to normal */
+	  -u[1]/(58.1324409*58.1324409),
+	  u[9]);
+#endif
 
   /* Set source type */
-  src->type = eltype;
+  src->type = SOURCE_ELEM;
 
   /* Generate rotation matrix */
-  m_identity(src->rot);
-  euler_rotate(src->rot, 3, -longperi);
-  euler_rotate(src->rot, 1, -incl);
-  euler_rotate(src->rot, 3, -anode);
+  m_identity(tmp);
+  euler_rotate(tmp, 3, -longperi);
+  euler_rotate(tmp, 1, -incl);
+  euler_rotate(tmp, 3, -anode);
+  m_x_m(eclm, tmp, rot);
 
-  /* Stash the rest */
-  src->ref_tdb = J2K + (epoch - 2000.0) * JYR;
-  src->aq = aq;
-  src->ecc = ecc;
+  /* Reference epoch */
+  src->ref_tdb = epoch;
 
-  switch(eltype) {
-  case SOURCE_ELEM_MAJOR:
-    /* Mean anomaly from mean longitude */
-    src->ma = lm - anode - longperi;
+  if(eltype == SOURCE_ELEM_COMET) {
+    /* Everything is relative to perihelion for comets.
+       All of the anomalies are zero here, so conversion to
+       universal elements is straightforward. */
 
-    /* Mean motion */
-    src->nn = nn;
+    src->mu = GMSUN * DAY*DAY / (AU*AU*AU);  /* AU^3 / day^2 */
 
-    break;
-  case SOURCE_ELEM_MINOR:
-    /* Mean anomaly */
-    src->ma = lm;
+    /* Position vector */
+    r[0] = aq;
+    r[1] = 0;
+    r[2] = 0;
 
-    /* Compute mean motion */
-    aa = aq * AU;
-    src->nn = sqrt(GMSUN / (aa*aa*aa)) / DAY;
+    /* Velocity vector */
+    v[0] = 0;
+    v[1] = sqrt(src->mu * (1.0 + ecc) / aq);
+    v[2] = 0;
 
-    break;
-  case SOURCE_ELEM_COMET:
-    /* Everything is relative to perihelion for comets */
-
-    break;
+    src->alpha = src->mu * (1.0 - ecc) / aq;
+    src->rref = aq;
   }
+  else {
+    if(eltype == SOURCE_ELEM_MAJOR) {
+      /* Mean anomaly at reference epoch */
+      ma = lm - anode - longperi;
+      
+      /* Compute alpha and mu from mean motion */
+      src->alpha = aq*aq * nn*nn;
+      src->mu = aq * src->alpha;
+    }
+    else {  /* SOURCE_ELEM_MINOR */
+      /* Mean anomaly at reference epoch */
+      ma = lm;
+      
+      /* Compute mu and alpha */
+      src->mu = GMSUN * DAY*DAY / (AU*AU*AU);  /* AU^3 / day^2 */
+      src->alpha = src->mu / aq;
+
+      /* Compute mean motion */
+      nn = sqrt(src->alpha / (aq*aq));
+    }
+
+    /* Eccentric anomaly at reference epoch: solve Kepler's equation */
+    ea = ma;
+    
+    for(i = 0; i < KEPLER_MAXITER; i++) {
+      dsincos(ea, &se, &ce);
+
+      f = ea - ecc * se - ma;
+      df = 1.0 - ecc * ce;
+      delta = f / df;
+      
+      if(fabs(delta) < KEPLER_PREC) {
+	/* I think that's enough... */
+	break;
+      }
+
+      ea -= delta;
+    }
+
+    /* Compute sin and cos of true anomaly at reference epoch */
+    a = se*se*(1.0-ecc);
+    b = 1.0 - ce;
+    b = b*b*(1.0+ecc);
+
+    fac = 1.0 / (a + b);
+
+    sef = sqrt(1.0 - ecc*ecc);
+
+    st = 2.0 * sef * se * (1.0 - ce) * fac;
+    ct = (a - b) * fac;
+
+    /* r = a (1 - e cos E) */
+    src->rref = aq * df;
+
+    /* Position vector */
+    r[0] = src->rref * ct;
+    r[1] = src->rref * st;
+    r[2] = 0;
+    
+    /* Velocity vector */
+    fac = nn * aq / df;
+    
+    v[0] = -fac * se;
+    v[1] = fac * sef * ce;
+    v[2] = 0;
+  }
+
+  src->sqrtalpha = sqrt(fabs(src->alpha));
+  src->muorref = src->mu / src->rref;
+  src->rvref = v_d_v(r, v);
+
+  m_x_v(rot, r, src->ref_n);
+  m_x_v(rot, v, src->ref_dndt);
+
+  src->psi = 0;
 }
 
 void source_place (struct observer *obs,
@@ -116,8 +235,10 @@ void source_place (struct observer *obs,
 		   double *s,             /* result */
 		   double *dsdt,          /* src motion only */
 		   double *pr_r) {
-  double vb[3], tmp[3];
+  double vb[3];
   double pr, nf, dt;
+  double c[4];
+  double psi, k, dk, delta, f, g, rr;
   int i;
 
   if(src->type == SOURCE_STAR) {
@@ -164,13 +285,13 @@ void source_place (struct observer *obs,
 	if(mask & TR_PLX) {
 	  for(i = 0; i < 3; i++) {
 	    s[i]  = -obs->hop[i];
-	    vb[i] = -obs->bsv[i];
+	    vb[i] = obs->bsv[i];
 	  }
 	}
 	else {
 	  for(i = 0; i < 3; i++) {
-	    s[i]  = -obs->bsp[i];
-	    vb[i] = -obs->bsv[i];
+	    s[i]  = obs->bsp[i];
+	    vb[i] = obs->bsv[i];
 	  }
 	}
       }
@@ -201,39 +322,65 @@ void source_place (struct observer *obs,
     }
     else {  /* Orbital elements */
 
-      /* Move to separate orbit subroutine, generalise for e = 1 and e > 1 */
+      dt = obs->tdb - src->ref_tdb;
 
-#if 0
-      /* Mean anomaly, restricted to [0, TWOPI) */
-      ma = fmod(src->ma + src->nn * (obs->tdb - src->ref_tdb), TWOPI);
-      if(ma < 0)
-	ma += TWOPI;
+      /* Iterative solution to universal Kepler's equation */
+      psi = src->psi;  /* initial guess is previous answer */
 
-      /* Eccentric anomaly: solve Kepler's equation */
-      ea = ma;
+      for(i = 0; i < KEPLER_MAXITER; i++) {
+	/* Evaluate Stumpff functions: c receives s^k c_k(x) */
+	stumpff(psi, src->alpha, src->sqrtalpha, c);
+	
+	/* Newton-Raphson iteration.  Derivative dk/ds uses
+	   d/ds (s^k c_k(x)) = c_k-1(x) */
+	k  = src->rref * c[1] + src->rvref * c[2] + src->mu * c[3] - dt;
+	dk = src->rref * c[0] + src->rvref * c[1] + src->mu * c[2];
+	
+	delta = k / dk;
 
-      for(iter = 0; iter < 3; iter++) {
-	f = ea - src->ecc * sin(ea) - ma;
-	df = 1.0 - src->ecc * cos(ea);
-	delta = f / df;  /* KABOOM? */
-	ea -= delta;
-    
-	if(fabs(delta) < 1.0e-8) {
+	fprintf(stderr, "iter %d: %lf %lf %lf %lf (%lf %lf %lf %lf)\n",
+		i+1, psi, k, dk, delta, c[0], c[1], c[2], c[3]);
+	
+	if(fabs(delta) < KEPLER_PREC) {
 	  /* I think that's enough... */
 	  break;
 	}
+	
+	psi -= delta;
       }
-
-      /* True anomaly */
       
-#endif
+      /* Compute result */
+      f = 1.0 - c[2] * src->muorref;
+      g = dt - c[3] * src->mu;
+      
+      for(i = 0; i < 3; i++)
+	s[i] = f * src->ref_n[i] + g * src->ref_dndt[i];
+      
+      rr = 1.0 / sqrt(v_d_v(s, s));
+      
+      f = -c[1] * src->muorref * rr;
+      g = 1.0 - c[2] * src->mu * rr;
+      
+      for(i = 0; i < 3; i++)
+	vb[i] = f * src->ref_n[i] + g * src->ref_dndt[i];
 
-      /* Orbital plane to ecliptic, then ecliptic to GCRS */
-      m_x_v(src->rot, s, tmp);
-      mt_x_v(obs->eclm, tmp, s);
+      fprintf(stderr,
+	      "Heliocentric state vector: (%le, %le, %le)\n",
+	      s[0], s[1], s[2]);
 
-      m_x_v(src->rot, vb, tmp);
-      mt_x_v(obs->eclm, tmp, vb);
+      /* Convert to barycentric or topocentric as requested */
+      if(mask & TR_PLX) {
+	for(i = 0; i < 3; i++) {
+	  s[i]  -= obs->hop[i];
+	  vb[i] += obs->bsv[i];
+	}
+      }
+      else {
+	for(i = 0; i < 3; i++) {
+	  s[i]  += obs->bsp[i];
+	  vb[i] += obs->bsv[i];
+	}
+      }
     }
 
     /* Romer delay */
