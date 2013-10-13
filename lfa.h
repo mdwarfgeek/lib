@@ -456,6 +456,7 @@ double v_angle_v (double u[3], double v[3]);
 /* -- mjd.c: generic Julian date functions -- */
 
 int date2mjd (int yr, int mn, int dy);
+void mjd2date (int n, int *yr, int *mn, int *dy);
 
 /* -- mpc.c: routines to read MPC 1-line format -- */
 
