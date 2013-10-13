@@ -17,3 +17,21 @@ int date2mjd (int yr, int mn, int dy) {
   return(rv);
 }
 
+void mjd2date (int n, int *yr, int *mn, int *dy) {
+  int a, b, dtmp;
+
+  /* Convert to Julian day number */
+  n += 2400001;
+
+  /* Convert to 4*Gregorian */
+  a = (4*n - 17918) / 146097;
+  b = (3*a + 2) / 4;
+
+  n = 4 * (n + b - 37);
+
+  dtmp = 10 * (((n - 237) % 1461) / 4) + 5;
+
+  *yr = n / 1461 - 4712;
+  *mn = (dtmp / 306 + 2) % 12 + 1;
+  *dy = (dtmp % 306) / 10 + 1;
+}
