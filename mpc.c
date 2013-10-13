@@ -170,7 +170,7 @@ int mpc_convert (char *line, struct source *src) {
     if(di < 1 || di > 31)
       goto error;
 
-    epoch = date2mjd(yr, mn, di) - 0.5;  /* convert to MJD(TT) */
+    epoch = date2mjd(yr, mn, di);  /* convert to MJD(TT) */
     
     /* Elements */
     if(extractdouble(line, len, 27, 35, &ma))  /* mean anomaly at epoch, deg */
