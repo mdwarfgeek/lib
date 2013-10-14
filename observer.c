@@ -142,7 +142,7 @@ int observer_update (struct observer *obs,
 			  1.0);
     
     /* Earth rotation matrix = R_3(era) */
-    dsincos(obs->era, &sera, &cera);
+    rdsincos(obs->era, sera, cera);
 
     m_identity(obs->erm);
     euler_rotate_sc(obs->erm, 3, sera, cera);

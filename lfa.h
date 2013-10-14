@@ -301,6 +301,28 @@ struct source {
 
 /* -- Miscellaneous useful macros and inline functions -- */
 
+/* Inline sine and cosine in one operation, for arguments already
+   in or reduced to appropriate range (usually using fmod).  In the
+   library, this is called with arguments in (-TWOPI,TWOPI), but on
+   x87 the allowed range for the fsincos instruction is much larger
+   than this.  The inline routine allows us to avoid extra floating
+   point load and store operations, which are not particularly quick
+   on some x87 implementations, and a branch for argument reduction.
+   It is intended for use with the GNU C compiler set to -ffast-math,
+   which should inline many math.h functions, but doesn't seem to
+   know about fsincos (even if one uses the sincos GNU extension
+   provided by glibc, at least on my system). */
+#if defined(__GNUC__) && (defined(__i386) || defined(__amd64))
+/* x86 assembler routine */
+#define rdsincos(a, s, c) __asm__ ("fsincos" : "=t" (c), "=u" (s) : "0" (a))
+#else
+/* Generic C implementation using library functions */
+#define rdsincos(a, s, c) {			\
+  (s) = sin(a);					\
+  (c) = cos(a);					\
+}
+#endif
+
 /* Wrap angle to [0, TWOPI) */
 #define ranorm(a) ((a) >= 0 ? fmod((a), TWOPI) : TWOPI+fmod((a), TWOPI))
 
