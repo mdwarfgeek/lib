@@ -4,6 +4,8 @@
 
 #define THRESH 1.0e-3
 
+static void pdsincosh (double x, double *s, double *c);
+
 /* Evaluates s^k c_k(x) for k=0,1,2,3 where x = alpha*s^2 */
 
 void stumpff (double s,
@@ -49,8 +51,10 @@ void stumpff (double s,
     /* Use sinh, cosh of sqrt(-x) */
     srx = sqrtalpha * fabs(s);
 
-    c[0] = cosh(srx);
-    c[1] = sinh(srx) / sqrtalpha;
+    pdsincosh(srx, &ssx, &csx);
+
+    c[0] = csx;
+    c[1] = ssx / sqrtalpha;
     if(s < 0)
       c[1] *= -1;
 
@@ -77,3 +81,33 @@ void stumpff (double s,
   }
 }
 
+/* Simultaneous sinh and cosh for positive arguments, used above.
+   Needs the C99 expm1 function, but I'm assuming most systems
+   have this. */
+
+static void pdsincosh (double x, double *s, double *c) {
+  double exm, ex, rex;
+
+  /* exp(x)-1 */
+  exm = expm1(x);
+
+  /* exp(x) */
+  ex = exm + 1;
+
+  /* exp(-x) */
+  rex = 1.0 / ex;
+
+  /* sinh(x) = (exp(x) - 1 + (exp(x) - 1) / exp(x)) / 2 
+     Prevents <number close to 1> - <number close to 1> */
+  *s = 0.5*(exm + exm * rex);
+
+  if(x > 0.5) {
+    /* cosh(x) = (exp(x) + exp(-x)) / 2 */
+    *c = 0.5*(ex + rex);
+  }
+  else {
+    /* cosh(x) = 1.0 + (exp(x)-1)**2 / (2 * exp(x))
+       Prevents <number close to 1> - <number close to 1> */
+    *c = 1.0 + 0.5*exm*exm*rex;
+  }
+}
