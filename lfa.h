@@ -291,6 +291,7 @@ struct source {
 
   /* Universal orbital elements */
   double mu;        /* G(M_1+M_2), AU^3 / day^2 */
+  double nn;        /* mean daily motion */
   double alpha;     /* total energy, mu/a, AU^2 / day^2 */
   double sqrtalpha; /* sqrt(|alpha|) */
   double rref;      /* heliocentric distance at reference epoch (ref_tdb), AU */

@@ -97,7 +97,7 @@ void source_elem (struct source *src,
 		  double nn) {
   double tmp[3][3], rot[3][3], r[3], v[3];
   double ma, ea, se, ce, st, ct, f, df, delta;
-  double sef, a, b, fac;
+  double sef, a, b, fac, raq;
   int i;
 
 #ifdef TEST
@@ -145,11 +145,15 @@ void source_elem (struct source *src,
     r[2] = 0;
 
     /* Velocity vector */
+    raq = 1.0 / aq;
+
     v[0] = 0;
-    v[1] = sqrt(src->mu * (1.0 + ecc) / aq);
+    v[1] = sqrt(src->mu * (1.0 + ecc)*raq);
     v[2] = 0;
 
-    src->alpha = src->mu * (1.0 - ecc) / aq;
+    src->alpha = src->mu * (1.0 - ecc)*raq;
+    src->sqrtalpha = sqrt(fabs(src->alpha));
+    src->nn = src->sqrtalpha * (1.0 - ecc)*raq;
     src->rref = aq;
   }
   else {
@@ -159,6 +163,7 @@ void source_elem (struct source *src,
       
       /* Compute alpha and mu from mean motion */
       src->alpha = aq*aq * nn*nn;
+      src->sqrtalpha = aq * nn;
       src->mu = aq * src->alpha;
     }
     else {  /* SOURCE_ELEM_MINOR */
@@ -166,11 +171,14 @@ void source_elem (struct source *src,
       ma = lm;
       
       /* Compute mu and alpha */
+      raq = 1.0 / aq;
+
       src->mu = GMSUN * DAY*DAY / (AU*AU*AU);  /* AU^3 / day^2 */
-      src->alpha = src->mu / aq;
+      src->alpha = src->mu * raq;
+      src->sqrtalpha = sqrt(src->alpha);
 
       /* Compute mean motion */
-      nn = sqrt(src->alpha / (aq*aq));
+      nn = src->sqrtalpha * raq;
     }
 
     /* Eccentric anomaly at reference epoch: solve Kepler's equation */
@@ -217,9 +225,10 @@ void source_elem (struct source *src,
     v[0] = -fac * se;
     v[1] = fac * sef * ce;
     v[2] = 0;
+
+    src->nn = nn;
   }
 
-  src->sqrtalpha = sqrt(fabs(src->alpha));
   src->muorref = src->mu / src->rref;
   src->rvref = v_d_v(r, v);
 
@@ -338,9 +347,11 @@ void source_place (struct observer *obs,
 	
 	delta = k / dk;
 
+#ifdef TEST
 	fprintf(stderr, "iter %d: %lf %lf %lf %lf (%lf %lf %lf %lf)\n",
 		i+1, psi, k, dk, delta, c[0], c[1], c[2], c[3]);
-	
+#endif	
+
 	if(fabs(delta) < KEPLER_PREC) {
 	  /* I think that's enough... */
 	  break;
@@ -364,9 +375,11 @@ void source_place (struct observer *obs,
       for(i = 0; i < 3; i++)
 	vb[i] = f * src->ref_n[i] + g * src->ref_dndt[i];
 
+#ifdef TEST
       fprintf(stderr,
 	      "Heliocentric state vector: (%le, %le, %le)\n",
 	      s[0], s[1], s[2]);
+#endif
 
       /* Convert to barycentric or topocentric as requested */
       if(mask & TR_PLX) {
