@@ -76,7 +76,7 @@ int extractintfrac (char *str, int len,
 		    int f, int l,
 		    int *ival, double *fval) {
   static char *p, *dp, *ep;
-  int v, ndig;
+  int v, dig, ndig;
 
   p = extractstr(str, len, f, l);
   if(!p)
@@ -109,7 +109,10 @@ int extractintfrac (char *str, int len,
       if(*p == '-')
 	v *= -1;
 
-      *fval = v * pow(10.0, -ndig);
+      *fval = v;
+
+      for(dig = 0; dig < ndig; dig++)
+	(*fval) *= 0.1;
     }
     else
       *fval = 0;
