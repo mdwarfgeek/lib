@@ -97,7 +97,7 @@ void source_elem (struct source *src,
 		  double nn) {
   double tmp[3][3], rot[3][3], r[3], v[3];
   double ma, ea, se, ce, st, ct, f, df, delta;
-  double sef, a, b, fac, raq;
+  double sef, fac, raq;
   int i;
 
 #ifdef TEST
@@ -181,11 +181,17 @@ void source_elem (struct source *src,
       nn = src->sqrtalpha * raq;
     }
 
+    /* Reduce mean anomaly */
+    ma = fmod(ma, TWOPI);
+
     /* Eccentric anomaly at reference epoch: solve Kepler's equation */
-    ea = ma;
+    if(ecc > 0.8)
+      ea = (M_PI * ecc + ma) / (1.0 + ecc);  /* for stability */
+    else
+      ea = ma;
     
     for(i = 0; i < KEPLER_MAXITER; i++) {
-      dsincos(ea, &se, &ce);
+      rdsincos(ea, se, ce);
 
       f = ea - ecc * se - ma;
       df = 1.0 - ecc * ce;
@@ -199,24 +205,18 @@ void source_elem (struct source *src,
       ea -= delta;
     }
 
-    /* Compute sin and cos of true anomaly at reference epoch */
-    a = se*se*(1.0-ecc);
-    b = 1.0 - ce;
-    b = b*b*(1.0+ecc);
-
-    fac = 1.0 / (a + b);
-
+    /* Compute (r/a) times sin and cos of true anomaly at reference epoch */
     sef = sqrt(1.0 - ecc*ecc);
 
-    st = 2.0 * sef * se * (1.0 - ce) * fac;
-    ct = (a - b) * fac;
+    st = se * sef;
+    ct = ce - ecc;
 
     /* r = a (1 - e cos E) */
     src->rref = aq * df;
 
     /* Position vector */
-    r[0] = src->rref * ct;
-    r[1] = src->rref * st;
+    r[0] = aq * ct;
+    r[1] = aq * st;
     r[2] = 0;
     
     /* Velocity vector */
