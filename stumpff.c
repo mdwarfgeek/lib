@@ -2,7 +2,7 @@
 
 #include "lfa.h"
 
-#define THRESH 1.0e-3
+#define THRESH 1.0e-6
 
 static void pdsincosh (double x, double *s, double *c);
 
