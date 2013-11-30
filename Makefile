@@ -14,7 +14,7 @@ CFLAGS=-Wall -g -fPIC -I$(HOME)/include
 
 ### End constants section ###
 
-SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mpc.c observer.c parallactic.c prenut.c refract.c source.c strutil.c stumpff.c
+SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c refract.c source.c strutil.c stumpff.c
 OBJS=${SRCS:%.c=%.o}
 
 TESTDSINCOS_SRCS=testdsincos.c

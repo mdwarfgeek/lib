@@ -481,6 +481,18 @@ double v_angle_v (double u[3], double v[3]);
 int date2mjd (int yr, int mn, int dy);
 void mjd2date (int n, int *yr, int *mn, int *dy);
 
+/* -- mount.c: vectors to/from general mount roll and pitch angles -- */
+
+int mount_ab2rp (double *aim, double *daimdt,
+		 double *bore,
+		 double snp, double cnp,
+		 unsigned char flip,
+		 double *r, double *p, double *drdt, double *dpdt);
+
+void mount_rp2pos (double r, double p,
+		   double snp, double cnp,
+		   double pos[3][3]);
+
 /* -- mpc.c: routines to read MPC 1-line format -- */
 
 int mpc_read (char *filename, struct source **srclist, int *nsrc);
