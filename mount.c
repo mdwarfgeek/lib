@@ -6,14 +6,17 @@
 
 /* Aim and boresight vectors to roll and pitch angles by decomposing
    posture matrix.  Follows Wallace (2002) equations.  Returns false
-   if there were no solutions, otherwise true. */
+   if there were no solutions, otherwise true.  Intended for
+   generating demands to send to a telescope drive system. */
 
 int mount_ab2rp (double *aim, double *daimdt,
 		 double *bore,
 		 double snp, double cnp,
 		 unsigned char flip,
-		 double *r, double *p, double *drdt, double *dpdt) {
-  double salph, calphsq, calph, sp, cp, x, y, sr, cr;
+		 double pos[3][3],
+		 double *r, double *p,
+		 double *drdt, double *dpdt) {
+  double salph, calphsq, calph, sp, cp, x, y, sr, cr, np, nr;
   double dsalphdt, dcalphdt, dspdt, dcpdt, dxdt, dydt, dsrdt, dcrdt;
 
   /* From Wallace, p = atan(salph/calph) - atan(bore_z / bore_x)
@@ -51,6 +54,15 @@ int mount_ab2rp (double *aim, double *daimdt,
   sr = x*aim[1] - y*aim[0];
   cr = x*aim[0] + y*aim[1];
 
+  /* Resulting posture matrix */
+  np = 1.0/sqrt(sp*sp+cp*cp);
+  nr = 1.0/sqrt(sr*sr+cr*cr);
+
+  m_identity(pos);
+  euler_rotate_sc(pos, 2, sp*np, cp*np);
+  euler_rotate_sc(pos, 1, snp, cnp);
+  euler_rotate_sc(pos, 3, -sr*nr, cr*nr);
+
   /* Resulting roll and pitch angles */
   *r = atan2(sr, cr);
   *p = atan2(sp, cp);
@@ -83,7 +95,8 @@ int mount_ab2rp (double *aim, double *daimdt,
   return(1);
 }
 
-/* Roll and pitch angles to posture matrix, defined so A = P B */
+/* Roll and pitch angles to posture matrix, defined so A = P B.
+   Intended for processing encoder readings. */
 
 void mount_rp2pos (double r, double p,
 		   double snp, double cnp,
