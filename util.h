@@ -42,6 +42,8 @@ void error (int code, const char *fmt, ...);
 void report_err (char *errstr, const char *fmt, ...);
 void report_syserr (char *errstr, const char *fmt, ...);
 
+int daemonify (void);
+
 /* In libc, but not the headers */
 
 char *basename (const char *);
