@@ -13,11 +13,12 @@ int mount_ab2rp (double *aim, double *daimdt,
 		 double *bore,
 		 double snp, double cnp,
 		 unsigned char flip,
-		 double pos[3][3],
-		 double *r, double *p,
-		 double *drdt, double *dpdt) {
-  double salph, calphsq, calph, sp, cp, x, y, sr, cr, np, nr;
+		 double pos[3][3], double *r, double *p,
+		 double dposdt[3][3], double *drdt, double *dpdt) {
+  double salph, calphsq, calph, sp, cp, x, y, sr, cr, npsq, nrsq, np, nr;
+  double dposdt_a[3][3], dposdt_b[3][3];
   double dsalphdt, dcalphdt, dspdt, dcpdt, dxdt, dydt, dsrdt, dcrdt;
+  int i, j;
 
   /* From Wallace, p = atan(salph/calph) - atan(bore_z / bore_x)
                      = atan((salph*bore_x - calph*bore_z) /
@@ -54,10 +55,14 @@ int mount_ab2rp (double *aim, double *daimdt,
   sr = x*aim[1] - y*aim[0];
   cr = x*aim[0] + y*aim[1];
 
-  /* Resulting posture matrix */
-  np = 1.0/sqrt(sp*sp+cp*cp);
-  nr = 1.0/sqrt(sr*sr+cr*cr);
+  /* Normalization constants */
+  npsq = 1.0/(sp*sp+cp*cp);
+  nrsq = 1.0/(sr*sr+cr*cr);
 
+  np = sqrt(npsq);
+  nr = sqrt(nrsq);
+
+  /* Resulting posture matrix */
   m_identity(pos);
   euler_rotate_sc(pos, 2, sp*np, cp*np);
   euler_rotate_sc(pos, 1, snp, cnp);
@@ -86,13 +91,67 @@ int mount_ab2rp (double *aim, double *daimdt,
     dsrdt = dxdt*aim[1] + x*daimdt[1] - dydt*aim[0] - y*daimdt[0];
     dcrdt = dxdt*aim[0] + x*daimdt[0] + dydt*aim[1] + y*daimdt[1];
 
+    /* Product rule for resulting posture matrix */
+    m_identity(dposdt_a);
+    euler_rotate_sc(dposdt_a, 2,
+		     (dspdt*cp - dcpdt*sp)*sp*np*npsq,
+		     (dcpdt*sp - dspdt*cp)*cp*np*npsq);
+    euler_rotate_sc(dposdt_a, 1, snp, cnp);
+    euler_rotate_sc(dposdt_a, 3, -sr*nr, cr*nr);
+
+    m_identity(dposdt_b);
+    euler_rotate_sc(dposdt_b, 2, sp*np, cp*np);
+    euler_rotate_sc(dposdt_b, 1, snp, cnp);
+    euler_rotate_sc(dposdt_b, 3,
+		    -(dsrdt*cr - dcrdt*sr)*sr*nr*nrsq,
+		     (dcrdt*cr - dsrdt*sr)*cr*nr*nrsq);
+
+    for(j = 0; j < 3; j++)
+      for(i = 0; i < 3; i++)
+	dposdt[j][i] = dposdt_a[j][i] + dposdt_b[j][i];
+
+    /* Resulting roll and pitch angles */
     if(drdt)
-      *drdt = (dsrdt*cr - dcrdt*sr) / (sr*sr + cr*cr);
+      *drdt = (dsrdt*cr - dcrdt*sr) * nrsq;
     if(dpdt)
-      *dpdt = (dspdt*cp - dcpdt*sp) / (sp*sp + cp*cp);
+      *dpdt = (dspdt*cp - dcpdt*sp) * npsq;
   }
 
   return(1);
+}
+
+void mount_pa (double *aimp, double *daimpdt,
+	       double *bore,
+	       double pos[3][3], double dposdt[3][3],
+	       double *a, double *dadt) {
+  double borep[3], dborepdt_a[3], dborepdt_b[3], dborepdt[3];
+  double sa, ca, dsadt, dcadt;
+  int i;
+
+  /* Transform PA unit vector */
+  mt_x_v(pos, aimp, borep);
+
+  /* Angle, from Wallace Sect. 4.3 */
+  sa = borep[1]*bore[0] - borep[0]*bore[1];
+  ca = borep[2]*(bore[0]*bore[0] + bore[1]*bore[1]) -
+       bore[2]*(borep[0]*bore[0] + borep[1]*bore[1]);
+    
+  *a = atan2(sa, ca);
+
+  if(dadt) {
+    /* Product rule for time derivative of transformed PA unit vector */
+    mt_x_v(pos, daimpdt, dborepdt_a);
+    mt_x_v(dposdt, aimp, dborepdt_b);
+
+    for(i = 0; i < 3; i++)
+      dborepdt[i] = dborepdt_a[i] + dborepdt_b[i];
+
+    dsadt = dborepdt[1]*bore[0] - dborepdt[0]*bore[1];
+    dcadt = dborepdt[2]*(bore[0]*bore[0] + bore[1]*bore[1]) -
+            bore[2]*(dborepdt[0]*bore[0] + dborepdt[1]*bore[1]);
+    
+    *dadt = (dsadt*ca - dcadt*sa) / (sa*sa + ca*ca);
+  }
 }
 
 /* Roll and pitch angles to posture matrix, defined so A = P B.

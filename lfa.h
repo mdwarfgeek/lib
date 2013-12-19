@@ -487,9 +487,13 @@ int mount_ab2rp (double *aim, double *daimdt,
 		 double *bore,
 		 double snp, double cnp,
 		 unsigned char flip,
-		 double pos[3][3],
-		 double *r, double *p,
-		 double *drdt, double *dpdt);
+		 double pos[3][3], double *r, double *p,
+		 double dposdt[3][3], double *drdt, double *dpdt);
+
+void mount_pa (double *aimp, double *daimpdt,
+	       double *bore,
+	       double pos[3][3], double dposdt[3][3],
+	       double *a, double *dadt);
 
 void mount_rp2pos (double r, double p,
 		   double snp, double cnp,
