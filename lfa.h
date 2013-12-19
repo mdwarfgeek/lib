@@ -327,6 +327,9 @@ struct source {
 /* Wrap angle to [0, TWOPI) */
 #define ranorm(a) ((a) >= 0 ? fmod((a), TWOPI) : TWOPI+fmod((a), TWOPI))
 
+/* Wrap angle to (-PI, PI] */
+#define range(a) remainder((a), TWOPI)
+
 /* Evaluate multiple polynomials simultaneously using Horner's method.  The
    array "p" is two dimensional, the most rapidly varying dimension is "nout"
    and the less rapid is "ncoeff" - i.e. the coefficients for the same
