@@ -66,6 +66,7 @@ int mount_ab2rp (double *aim, double *daimdt,
   m_identity(pos);
   euler_rotate_sc(pos, 2, sp*np, cp*np);
   euler_rotate_sc(pos, 1, snp, cnp);
+  m_copy(pos, dposdt_b);  /* for later */
   euler_rotate_sc(pos, 3, -sr*nr, cr*nr);
 
   /* Resulting roll and pitch angles */
@@ -78,7 +79,7 @@ int mount_ab2rp (double *aim, double *daimdt,
 
     if(calph > 0)
       dcalphdt = (aim[0]*daimdt[0] + aim[1]*daimdt[1] - 
-		  2*bore[1]*daimdt[2]*snp) / calph;
+		  bore[1]*daimdt[2]*snp) / calph;
     else
       dcalphdt = 0;  /* pole */
 
@@ -93,18 +94,15 @@ int mount_ab2rp (double *aim, double *daimdt,
 
     /* Product rule for resulting posture matrix */
     m_identity(dposdt_a);
-    euler_rotate_sc(dposdt_a, 2,
-		     (dspdt*cp - dcpdt*sp)*sp*np*npsq,
-		     (dcpdt*sp - dspdt*cp)*cp*np*npsq);
+    euler_drot_sc(dposdt_a, 2,
+		   (dspdt*cp - dcpdt*sp)*cp*np*npsq,
+		   (dcpdt*sp - dspdt*cp)*sp*np*npsq);
     euler_rotate_sc(dposdt_a, 1, snp, cnp);
     euler_rotate_sc(dposdt_a, 3, -sr*nr, cr*nr);
 
-    m_identity(dposdt_b);
-    euler_rotate_sc(dposdt_b, 2, sp*np, cp*np);
-    euler_rotate_sc(dposdt_b, 1, snp, cnp);
-    euler_rotate_sc(dposdt_b, 3,
-		    -(dsrdt*cr - dcrdt*sr)*sr*nr*nrsq,
-		     (dcrdt*cr - dsrdt*sr)*cr*nr*nrsq);
+    euler_drot_sc(dposdt_b, 3,
+		  -(dsrdt*cr - dcrdt*sr)*cr*nr*nrsq,
+		   (dcrdt*sr - dsrdt*cr)*sr*nr*nrsq);
 
     for(j = 0; j < 3; j++)
       for(i = 0; i < 3; i++)

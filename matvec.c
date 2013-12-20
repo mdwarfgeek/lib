@@ -40,6 +40,37 @@ void euler_rotate_sc (double m[3][3], int axis, double sa, double ca) {
   }
 }
 
+void euler_drot_sc (double m[3][3], int axis, double dsa, double dca) {
+  int h = 2, i = 0, j = 1, k;
+  double atmp, btmp;
+
+  switch(axis) {
+  case 1:
+    h = 0;
+    i = 1;
+    j = 2;
+    break;
+  case 2:
+    h = 1;
+    i = 2;
+    j = 0;
+    break;
+  case 3:
+    h = 2;
+    i = 0;
+    j = 1;
+    break;
+  }
+
+  for(k = 0; k < 3; k++) {
+    atmp =  dca * m[i][k] + dsa * m[j][k];
+    btmp = -dsa * m[i][k] + dca * m[j][k];
+    m[i][k] = atmp;
+    m[j][k] = btmp;
+    m[h][k] = 0;
+  }
+}
+
 void m_x_v (double m[3][3], double vi[3], double vo[3]) {
   int i, j;
 

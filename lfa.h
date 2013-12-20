@@ -412,11 +412,27 @@ int iers_fetch (struct iers_table *tab, double mjd,
 void euler_rotate (double m[3][3], int axis, double angle);
 void euler_rotate_sc (double m[3][3], int axis, double sa, double ca);
 
+/* Makes derivative of Euler rotation matrix about "axis" */
+void euler_drot_sc (double m[3][3], int axis, double dsa, double dca);
+
 /* Identity matrix */
 #define m_identity(m) {				\
   (m)[0][0] = (m)[1][1] = (m)[2][2] = 1.0;	\
   (m)[0][1] = (m)[1][0] = (m)[2][1] = 0.0;	\
   (m)[0][2] = (m)[1][2] = (m)[2][0] = 0.0;	\
+}
+
+/* Matrix copy */
+#define m_copy(a, b) {				\
+  (b)[0][0] = (a)[0][0];			\
+  (b)[0][1] = (a)[0][1];			\
+  (b)[0][2] = (a)[0][2];			\
+  (b)[1][0] = (a)[1][0];			\
+  (b)[1][1] = (a)[1][1];			\
+  (b)[1][2] = (a)[1][2];			\
+  (b)[2][0] = (a)[2][0];			\
+  (b)[2][1] = (a)[2][1];			\
+  (b)[2][2] = (a)[2][2];			\
 }
 
 /* Matrix transpose */
