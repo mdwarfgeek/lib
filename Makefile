@@ -10,7 +10,7 @@ CFLAGS=-Wall -g -fPIC -I$(HOME)/include
 
 # Recommended flags for modern cpu
 # DEBUG: -g
-# OPTS: -O3 -ffast-math -msse2
+# OPTS: -g -O3 -ffast-math
 
 ### End constants section ###
 
