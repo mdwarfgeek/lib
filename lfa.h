@@ -146,9 +146,9 @@ struct jpleph_table {
 
 struct dtai_entry {
   int mjd;  /* leap seconds can only happen at midnight so always integer */
-  float dtai;
-  float mjdzero;
-  float scale;
+  double dtai;
+  double mjdzero;
+  double scale;
 };
 
 struct dtai_table {
