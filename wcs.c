@@ -210,3 +210,121 @@ void wcs_xy2xy (struct wcs_info *wcs1, struct wcs_info *wcs2,
   wcs_vec2xy(wcs2, vec, x2, y2);
 }
 
+void wcs_tp2xy (struct wcs_info *wcs, double fx, double fy,
+		double *x, double *y) {
+  double cotsq, cot, rt, st, rfac, denom;
+  double tt, fac;
+  int i;
+
+  /* Convert to appropriate focal plane angular coordinates for proj. */
+  switch(wcs->proj) {
+  case PROJ_TAN:
+    /* Already done */
+    break;
+  case PROJ_SIN:
+    /* Gnomonic to Orthographic: multiply by sin theta */
+    st = sqrt(1.0/(1.0+fx*fx+fy*fy));
+    fx *= st;
+    fy *= st;
+    break;
+  case PROJ_ARC:
+    /* cot^2 theta */
+    cotsq = fx*fx+fy*fy;
+    cot = sqrt(cotsq);
+
+    /* R_theta = pi/2 - theta => tan R_theta = cot theta */
+    rt = atan(cot);
+
+    /* Is there any distortion? */
+    if(wcs->mpc > 0) {
+      /* Evaluate polynomial */
+      rfac = wcs->pc[wcs->mpc];
+      for(i = wcs->mpc-1; i > 0; i++)
+	rfac = rfac * rt + wcs->pc[i];
+
+      fx *= rfac;
+      fy *= rfac;
+    }
+
+    /* Handle case of origin */
+    if(cotsq < SAFE) {  /* use series rt * tan(rt) to O(rt^6) */
+      tt = rt*rt;
+      fac = (((2.0/15.0) * tt + (1.0/3.0)) * tt + 1.0) * tt;
+    }
+    else  /* actual expression: rt / cot(theta) */
+      fac = rt / cot;
+
+    fx *= fac;
+    fy *= fac;
+    break;
+  }
+
+  /* Now transform to pixels */
+  denom = wcs->a * wcs->e - wcs->d * wcs->b;
+
+  *x = (fx * wcs->e - fy * wcs->b) / denom + wcs->c;
+  *y = (fy * wcs->a - fx * wcs->d) / denom + wcs->f;
+}
+
+void wcs_xy2tp (struct wcs_info *wcs, double x, double y,
+		double *fx, double *fy) {
+  double rtsq, csct, tt, ttsq, rfac;
+  double fac, rt;
+  int i, iter;
+
+  /* First transform from pixels to focal plane angular coords. */
+  x -= wcs->c;
+  y -= wcs->f;
+
+  (*fx) = wcs->a * x + wcs->b * y;
+  (*fy) = wcs->d * x + wcs->e * y;
+
+  /* Convert to Gnomonic */
+  switch(wcs->proj) {
+  case PROJ_TAN:
+    /* Already done */
+    break;
+  case PROJ_SIN:
+    /* Orthographic to Gnomonic: divide by sin theta */
+    csct = sqrt(1.0/(1.0-(*fx)*(*fx)-(*fy)*(*fy)));
+    (*fx) *= csct;
+    (*fy) *= csct;
+    break;
+  case PROJ_ARC:
+    /* Extract R_theta */
+    rtsq = (*fx)*(*fx)+(*fy)*(*fy);
+    rt = sqrt(rtsq);
+
+    /* Is there any distortion? */
+    if(wcs->mpc > 0) {
+      /* Invert polynomial to get tt = 90-theta */
+      tt = rt;
+
+      for(iter = 0; iter < 3; iter++) {
+	rfac = wcs->pc[wcs->mpc];
+	for(i = wcs->mpc-1; i > 0; i++)
+	  rfac = rfac * tt + wcs->pc[i];
+
+	tt = rt / rfac;
+      }
+
+      ttsq = tt*tt;
+
+      if(ttsq < SAFE)  /* tt/rt * series tan(tt)/tt to O(rt^4) */
+	fac = (((2.0/15.0) * ttsq + (1.0/3.0)) * ttsq + 1.0) / rfac;
+      else  /* actual expression: cot(theta) / rt = tan(tt) / rt */
+	fac = tan(tt) / rt;
+    }
+    else {
+      if(rtsq < SAFE)  /* use series for tan(rt) / rt to O(rt^4) */
+	fac = ((2.0/15.0) * rtsq + (1.0/3.0)) * rtsq + 1.0;
+      else  /* actual expression: cot(theta) / rt = tan(rt) / rt */
+	fac = tan(rt) / rt;
+    }
+
+    (*fx) *= fac;
+    (*fy) *= fac;
+
+    break;
+  }
+}

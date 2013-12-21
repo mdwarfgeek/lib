@@ -694,5 +694,9 @@ void wcs_ad2xy (struct wcs_info *wcs, double a, double d, double *x, double *y);
 void wcs_xy2ad (struct wcs_info *wcs, double x, double y, double *a, double *d);
 void wcs_xy2xy (struct wcs_info *wcs1, struct wcs_info *wcs2,
 		double x1, double y1, double *x2, double *y2);
+void wcs_tp2xy (struct wcs_info *wcs, double fx, double fy,
+		double *x, double *y);
+void wcs_xy2tp (struct wcs_info *wcs, double x, double y,
+		double *fx, double *fy);
 
 #endif  /* LFA_H */
