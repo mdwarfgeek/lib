@@ -12,10 +12,16 @@ CFLAGS=-Wall -g -fPIC -I$(HOME)/include
 # DEBUG: -g
 # OPTS: -g -O3 -ffast-math
 
+# Extra flags for CFITSIO
+CFITSIO_CFLAGS=-I/usr/local/include
+
 ### End constants section ###
 
-SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c refract.c source.c strutil.c stumpff.c
+SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c refract.c source.c strutil.c stumpff.c wcs.c
 OBJS=${SRCS:%.c=%.o}
+
+EXTRA_SRCS=cnf.c cvtunit.c fitsutil.c tcutil.c util.c
+EXTRA_OBJS=${EXTRA_SRCS:%.c=%.o}
 
 TESTDSINCOS_SRCS=testdsincos.c
 TESTDSINCOS_OBJS=${TESTDSINCOS_SRCS:%.c=%.o}
@@ -53,10 +59,15 @@ TESTTP_OBJS=${TESTTP_SRCS:%.c=%.o}
 
 all: liblfa.a
 
+extra: $(EXTRA_OBJS)
+
 liblfa.a: $(OBJS)
 	rm -f $@
 	ar r $@ $(OBJS)
 	ranlib $@
+
+fitsutil.o: fitsutil.c
+	$(CC) $(CFLAGS) $(CFITSIO_CFLAGS) -o $@ -c $<
 
 testdsincos: $(TESTDSINCOS_OBJS) liblfa.a
 	$(CC) -o testdsincos $(TESTDSINCOS_OBJS) liblfa.a -lm
@@ -96,3 +107,4 @@ clean:
 	rm -f $(TESTSUN_OBJS) testsun
 	rm -f $(TESTSTUMPFF_OBJS) teststumpff
 	rm -f $(TESTTP_OBJS) testtp
+	rm -f $(EXTRA_OBJS)

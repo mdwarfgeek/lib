@@ -300,6 +300,32 @@ struct source {
   double psi;       /* universal eccentric anomaly, last value to speed up iterations */
 };
 
+struct wcs_info {
+  double a;
+  double b;
+  double c;
+  double d;
+  double e;
+  double f;
+
+  double tpa;
+  double tpd;
+  double sina;
+  double cosa;
+  double sind;
+  double cosd;
+
+  enum {
+    PROJ_TAN,
+    PROJ_SIN,
+    PROJ_ARC
+  } proj;
+
+#define PC_MAX 20       /* defined in Calabretta et al. (2002) */
+  double pc[PC_MAX+1];
+  int mpc;              /* last populated index in pc array */
+};
+
 /* -- Miscellaneous useful macros and inline functions -- */
 
 /* Inline sine and cosine in one operation, for arguments already
@@ -656,8 +682,17 @@ int extractintfrac (char *str, int len,
 		    int *ival, double *fval);
 char *sstrip (char *str);
 
-/* -- stumpff.c: Stumpff functions */
+/* -- stumpff.c: Stumpff functions -- */
 
 void stumpff (double s, double alpha, double sqrtalpha, double *c);
+
+/* -- wcs.c: Support for a limited subset of FITS-WCS -- */
+
+void wcs_vec2xy (struct wcs_info *wcs, double *vec, double *x, double *y);
+void wcs_xy2vec (struct wcs_info *wcs, double x, double y, double *vec);
+void wcs_ad2xy (struct wcs_info *wcs, double a, double d, double *x, double *y);
+void wcs_xy2ad (struct wcs_info *wcs, double x, double y, double *a, double *d);
+void wcs_xy2xy (struct wcs_info *wcs1, struct wcs_info *wcs2,
+		double x1, double y1, double *x2, double *y2);
 
 #endif  /* LFA_H */
