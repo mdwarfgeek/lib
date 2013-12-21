@@ -154,8 +154,8 @@ void wcs_xy2vec (struct wcs_info *wcs, double x, double y, double *vec) {
 	fac = ct / rt;
     }
 
-    ctsp = fx*fac * rfac;
-    ctcp = -fy*fac * rfac;
+    ctsp = fx*fac;
+    ctcp = -fy*fac;
 
     break;
   }
