@@ -42,8 +42,13 @@ void dsincos (double a, double *s, double *c) {
 
 #else
   /* Generic C implementation using library functions */
+#ifdef FORTRAN
   *s = sin(*a);
   *c = cos(*a);
+#else
+  *s = sin(a);
+  *c = cos(a);
+#endif
 #endif
 }
 
