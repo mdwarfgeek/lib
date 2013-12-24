@@ -7,18 +7,11 @@
 #include "util.h"
 
 void observer_init (struct observer *obs,
-		    struct jpleph_table *jpltab,
-		    struct jpleph_table *tetab,
-		    struct iers_table *iertab,
 		    double longitude,  /* WGS84 longitude, E positive */
 		    double latitude,   /* WGS84 latitude, N positive */
 		    double height) {   /* Height above geoid, m */
   double sinphi, cosphi, sinlam, coslam;
   double u, z;
-
-  obs->jpltab = jpltab;
-  obs->tetab = tetab;
-  obs->iertab = iertab;
 
   obs->latitude = latitude;
   obs->longitude = longitude;
@@ -56,6 +49,9 @@ void observer_init (struct observer *obs,
 }
 
 int observer_update (struct observer *obs,
+		     struct jpleph_table *jpltab,
+		     struct jpleph_table *tetab,
+		     struct iers_table *iertab,
 		     double tt,
 		     unsigned char mask) {
   int rv, i;
@@ -71,12 +67,12 @@ int observer_update (struct observer *obs,
   jctk = jdtk / (100*JYR);
 
   if(mask & OBSERVER_UPDATE_IERS) {
-    if(obs->iertab) {
+    if(iertab) {
       /* Update Earth orientation parameters from IERS tabulation.
 	 Strictly, the argument should be UTC, but TT is used here. 
 	 dX and dY are ignored, because we use IAU 2000B rather
          than 2000A nutation, so strictly they don't apply. */
-      rv = iers_fetch(obs->iertab, tt,
+      rv = iers_fetch(iertab, tt,
 		      &(obs->dut1), &(obs->xp), &(obs->yp),
 		      (double *) NULL, (double *) NULL);
       if(rv < 0)
@@ -170,20 +166,20 @@ int observer_update (struct observer *obs,
                                             pretty good approx. */
   }
 
-  if((mask & OBSERVER_UPDATE_TDB) && obs->tetab) {
+  if((mask & OBSERVER_UPDATE_TDB) && tetab) {
     /* Fetch time ephemeris integral and Earth velocity vector */
-    rv = jpleph_fetch(obs->tetab, tt, TIMEEPH_TEI, &tei, &dteidt);
+    rv = jpleph_fetch(tetab, tt, TIMEEPH_TEI, &tei, &dteidt);
     if(rv < 0)
       return(rv);
 
-    rv = jpleph_fetch(obs->tetab, tt, TIMEEPH_TEV, tev, dtevdt);
+    rv = jpleph_fetch(tetab, tt, TIMEEPH_TEV, tev, dtevdt);
     if(rv < 0)
       return(rv);
 
     /* Compute delta(TDB) in seconds */
     obs->dtdb = ZTDB
       + v_d_v(tev, obs->gop)*AU*AU / (LIGHT*LIGHT*DAY)  /* topocentric */
-      + tei*DAY / (1.0 - obs->tetab->lc);               /* geocentric */
+      + tei*DAY / (1.0 - tetab->lc);                    /* geocentric */
   }
 
   obs->tdb = tt + obs->dtdb / DAY;
@@ -192,22 +188,22 @@ int observer_update (struct observer *obs,
     /* Components of Earth position and velocity relative to SSB and
        heliocentre from ephemerides.  TT is used as an approximation
        to TDB if dtdb is not available. */
-    rv = jpleph_fetch(obs->jpltab, obs->tdb, JPLEPH_EMB, obs->bep, obs->bev);
+    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_EMB, obs->bep, obs->bev);
     if(rv < 0)
       return(rv);
     
-    rv = jpleph_fetch(obs->jpltab, obs->tdb, JPLEPH_MOON, obs->emp, obs->emv);
+    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_MOON, obs->emp, obs->emv);
     if(rv < 0)
       return(rv);
     
-    rv = jpleph_fetch(obs->jpltab, obs->tdb, JPLEPH_SUN, obs->bsp, obs->bsv);
+    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_SUN, obs->bsp, obs->bsv);
     if(rv < 0)
       return(rv);
     
     for(i = 0; i < 3; i++) {
       /* SSB->Earth = SSB->EMB - Earth->EMB */
-      obs->bep[i] -= obs->jpltab->emfac * obs->emp[i];
-      obs->bev[i] -= obs->jpltab->emfac * obs->emv[i];
+      obs->bep[i] -= jpltab->emfac * obs->emp[i];
+      obs->bev[i] -= jpltab->emfac * obs->emv[i];
       
       /* Sun->Earth = SSB->Earth - SSB->Sun */
       obs->hep[i] = obs->bep[i] - obs->bsp[i];

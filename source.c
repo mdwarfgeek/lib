@@ -240,6 +240,7 @@ void source_elem (struct source *src,
 
 void source_place (struct observer *obs,
 		   struct source *src,
+		   struct jpleph_table *jpltab,
 		   unsigned char mask,    /* parts we want */
 		   double *s,             /* result */
 		   double *dsdt,          /* src motion only */
@@ -321,7 +322,7 @@ void source_place (struct observer *obs,
       else {
 	/* Fetch from ephemeris.  It should already be loaded and
 	   interpolated in observer_update, so this call cannot fail. */
-	(void) jpleph_fetch(obs->jpltab, obs->tdb, src->type, s, vb);
+	(void) jpleph_fetch(jpltab, obs->tdb, src->type, s, vb);
 
 	if(mask & TR_PLX) {
 	  for(i = 0; i < 3; i++)

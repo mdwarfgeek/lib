@@ -187,10 +187,6 @@ struct iers_table {
 
 struct observer {
   /* Static quantities */
-  struct jpleph_table *jpltab;
-  struct jpleph_table *tetab;
-  struct iers_table *iertab;
-
   double latitude;
   double longitude;
   double height;
@@ -273,9 +269,12 @@ struct source {
   /* What type of source is it?  The JPLEPH constants defined above
      are used for sources covered by the JPL ephemerides, so these
      constants must not overlap. */
-  unsigned char type;
+  uint8_t type;
 #define SOURCE_STAR       16
 #define SOURCE_ELEM       17
+
+  /* Pad to 64 bits explicitly */
+  uint8_t _pad[7];
 
   /* For stars, unit vector and velocity at catalogue epoch.  For elements,
      heliocentric position and velocity at reference epoch. */
@@ -552,9 +551,6 @@ int mpc_convert (char *line, struct source *src);
 /* -- observer.c: observer structure setup and update -- */
 
 void observer_init (struct observer *obs,
-		    struct jpleph_table *jpltab,
-		    struct jpleph_table *tetab,
-		    struct iers_table *iertab,
 		    double longitude,  /* WGS84 longitude, E positive */
 		    double latitude,   /* WGS84 latitude, N positive */
 		    double height);    /* Height above geoid, m */
@@ -569,6 +565,9 @@ void observer_init (struct observer *obs,
 #define OBSERVER_UPDATE_ALL    0xff
 
 int observer_update (struct observer *obs,
+		     struct jpleph_table *jpltab,
+		     struct jpleph_table *tetab,
+		     struct iers_table *iertab,
 		     double tt,
 		     unsigned char mask);
 
@@ -662,6 +661,7 @@ void source_elem (struct source *src,
 
 void source_place (struct observer *obs,
 		   struct source *src,
+		   struct jpleph_table *jpltab,
 		   unsigned char mask,   /* parts we want */
 		   double *s,
 		   double *dsdt,

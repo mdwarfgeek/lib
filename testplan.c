@@ -74,7 +74,7 @@ int main (int argc, char *argv[]) {
     tptr = &ttab;
 
   /* Setup observer structure */
-  observer_init(&obs, &jtab, tptr, &itab, longitude, latitude, height);
+  observer_init(&obs, longitude, latitude, height);
 
   refract_const(temperat, humidity, pressure, wavelength, height,
 		obs.refco);
@@ -121,14 +121,15 @@ int main (int argc, char *argv[]) {
 
     /* Update */
     if(!running || tvdiff.tv_sec >= 10) {
-      rv = observer_update(&obs, tt, OBSERVER_UPDATE_ALL);
+      rv = observer_update(&obs, &jtab, tptr, &itab, tt,
+			   OBSERVER_UPDATE_ALL);
       if(rv)
 	fatal(1, "observer_update: %d (%s)", rv, strerror(errno));
 
       tvslow = tv;
     }
     else {
-      rv = observer_update(&obs, tt,
+      rv = observer_update(&obs, &jtab, tptr, &itab, tt,
 			   OBSERVER_UPDATE_PFB |
 			   OBSERVER_UPDATE_ERA |
 			   OBSERVER_UPDATE_SOLSYS);
@@ -164,7 +165,7 @@ int main (int argc, char *argv[]) {
       src.type = i;
       
       /* Astrometric place of source */
-      source_place(&obs, &src, TR_MOTION | TR_PLX, s, dsdt, &pr);
+      source_place(&obs, &src, &jtab, TR_MOTION | TR_PLX, s, dsdt, &pr);
 
       if(i != JPLEPH_SUN) {
 	/* Take off actual gravitational deflection, and put on
