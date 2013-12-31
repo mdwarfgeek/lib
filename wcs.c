@@ -207,7 +207,7 @@ void wcs_xy2ad (struct wcs_info *wcs, double x, double y, double *a, double *d) 
   if((*a) < 0.0)
     *a += TWOPI;
 
-  *d = atan2f(vec[2], sqrt(vec[0]*vec[0]+vec[1]*vec[1]));
+  *d = atan2(vec[2], sqrt(vec[0]*vec[0]+vec[1]*vec[1]));
 }
 
 void wcs_xy2xy (struct wcs_info *wcs1, struct wcs_info *wcs2,
