@@ -5,8 +5,6 @@
 #include "lfa.h"
 #include "util.h"
 
-#define MAX_SECZ 11.4737  /* 85 degrees */
-
 /* Compute air mass using Hardie (1962) formula */
 
 double v_airmass (double v[3]) {
