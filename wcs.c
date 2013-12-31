@@ -56,7 +56,15 @@ void wcs_vec2xy (struct wcs_info *wcs, double *vec, double *x, double *y) {
     break;
   case PROJ_ARC:
     /* ARC projection: R_theta = pi/2 - theta => cos R_theta = sin theta */
-    rt = acos(st);
+
+    /* Roundoff error can sometimes push st slightly out of range, so supply
+       the appropriate values at the limits in case this happens. */
+    if(st < -1.0)
+      rt = M_PI;
+    else if(st > 1.0)
+      rt = 0;
+    else
+      rt = acos(st);
 
     /* cos^2(theta) = sin^2(rt) */
     ctsq = ctsp*ctsp + ctcp*ctcp;
