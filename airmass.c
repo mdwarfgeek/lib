@@ -10,7 +10,7 @@
 /* Compute air mass using Hardie (1962) formula */
 
 double v_airmass (double v[3]) {
-  double z, zsq, rsq, secz, szm;
+  double z, secz, szm;
 
   /* Hold constant below about 3 degrees */
   if(v[2] < 0.05)
