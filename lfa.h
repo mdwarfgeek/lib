@@ -377,7 +377,7 @@ struct wcs_info {
 
 /* -- airmass.c: Airmass -- */
 
-double airmass (double secz);
+double v_airmass (double v[3]);
 
 /* -- bary.c: Barycentering -- */
 
@@ -584,7 +584,7 @@ void observer_obs2ast (struct observer *obs,
 
 /* -- parallactic.c: parallactic angle -- */
 
-double parallactic (double sinphi, double cosphi, double v[3]);
+double v_parallactic (double sinphi, double cosphi, double v[3]);
 
 /* -- prenut.c: precession and nutation -- */
 
@@ -649,6 +649,12 @@ void source_star (struct source *src,
 		  double pmra, double pmde,  /* sky projected, arcsec/yr */
 		  double plx, double vrad,   /* arcsec, km/s */
 		  double epoch);
+
+void source_star_vec (struct source *src,
+		      double *n,
+		      double *dndt,
+		      double pr,
+		      double epoch);
 
 #define SOURCE_ELEM_MAJOR  1
 #define SOURCE_ELEM_MINOR  2

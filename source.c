@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "lfa.h"
@@ -71,6 +72,26 @@ void source_star (struct source *src,
   src->ref_dndt[0] = df * (-pmra * sa - pmde * ca*sd + vf * src->ref_n[0]);
   src->ref_dndt[1] = df * ( pmra * ca - pmde * sa*sd + vf * src->ref_n[1]);
   src->ref_dndt[2] = df * (             pmde *    cd + vf * src->ref_n[2]);
+
+  /* Stash epoch */
+  src->ref_tdb = J2K + (epoch - 2000.0) * JYR;
+}
+
+void source_star_vec (struct source *src,
+		      double *n,
+		      double *dndt,
+		      double pr,
+		      double epoch) {
+
+  /* Set source type */
+  src->type = SOURCE_STAR;
+
+  /* Copy in parameters */
+  memcpy(&(src->ref_n[0]), n, sizeof(src->ref_n));
+  if(dndt)
+    memcpy(&(src->ref_dndt[0]), dndt, sizeof(src->ref_dndt));
+
+  src->pr = pr;
 
   /* Stash epoch */
   src->ref_tdb = J2K + (epoch - 2000.0) * JYR;

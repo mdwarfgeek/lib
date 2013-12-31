@@ -9,15 +9,18 @@
 
 /* Compute air mass using Hardie (1962) formula */
 
-double airmass (double secz) {
-  double szm;
+double v_airmass (double v[3]) {
+  double z, zsq, rsq, secz, szm;
 
-  /* Hold constant above 85 degrees zenith distance */
-  if(secz < 0 || secz > MAX_SECZ)
-    secz = MAX_SECZ;
+  /* Hold constant below about 3 degrees */
+  if(v[2] < 0.05)
+    z = 0.05;
+  else
+    z = v[2];
 
+  secz = sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) / z;
   szm = secz - 1.0;
 
-  return(secz - (0.0018167 +
-		(0.002875 + 0.0008083*szm) * szm) * szm);
+  return(((0.0008083*szm + 0.002875) * szm + 0.0018167) * szm + secz + 1.0);
 }
+
