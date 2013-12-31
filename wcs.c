@@ -65,7 +65,7 @@ void wcs_vec2xy (struct wcs_info *wcs, double *vec, double *x, double *y) {
     if(wcs->mpc > 0) {
       /* Evaluate polynomial */
       rfac = wcs->pc[wcs->mpc];
-      for(i = wcs->mpc-1; i > 0; i++)
+      for(i = wcs->mpc-1; i > 0; i--)
 	rfac = rfac * rt + wcs->pc[i];
     }
     else
@@ -92,8 +92,8 @@ void wcs_vec2xy (struct wcs_info *wcs, double *vec, double *x, double *y) {
 }
 
 void wcs_xy2vec (struct wcs_info *wcs, double x, double y, double *vec) {
-  double fx, fy, st = 0, ctsp = 0, ctcp = 0, rtsq, tt, ttsq, rfac, ct, camtcd;
-  double fac, rt;
+  double fx, fy, st = 0, ctsp = 0, ctcp = 0, rtsq, tt, ttsq, rfac, drfac, ct, camtcd;
+  double fac, rt, dtt;
   int i, iter;
 
   /* First transform from pixels to focal plane angular coords. */
@@ -129,12 +129,20 @@ void wcs_xy2vec (struct wcs_info *wcs, double x, double y, double *vec) {
       /* Invert polynomial to get tt = 90-theta */
       tt = rt;
 
-      for(iter = 0; iter < 3; iter++) {
+      for(iter = 0; iter < 10; iter++) {
 	rfac = wcs->pc[wcs->mpc];
-	for(i = wcs->mpc-1; i > 0; i++)
+	drfac = wcs->mpc * wcs->pc[wcs->mpc];
+	for(i = wcs->mpc-1; i > 0; i--) {
 	  rfac = rfac * tt + wcs->pc[i];
+	  drfac = drfac * tt + i * wcs->pc[i];
+	}
 
-	tt = rt / rfac;
+	dtt = (tt*rfac - rt) / drfac;
+
+	if(fabs(dtt) < TINY)
+	  break;
+
+	tt -= dtt;
       }
 
       dsincos(tt, &ct, &st);  
@@ -189,7 +197,7 @@ void wcs_ad2xy (struct wcs_info *wcs, double a, double d,
   wcs_vec2xy(wcs, vec, x, y);
 }
 
-void xy2ad (struct wcs_info *wcs, double x, double y, double *a, double *d) {
+void wcs_xy2ad (struct wcs_info *wcs, double x, double y, double *a, double *d) {
   double vec[3];
 
   wcs_xy2vec(wcs, x, y, vec);
@@ -239,7 +247,7 @@ void wcs_tp2xy (struct wcs_info *wcs, double fx, double fy,
     if(wcs->mpc > 0) {
       /* Evaluate polynomial */
       rfac = wcs->pc[wcs->mpc];
-      for(i = wcs->mpc-1; i > 0; i++)
+      for(i = wcs->mpc-1; i > 0; i--)
 	rfac = rfac * rt + wcs->pc[i];
 
       fx *= rfac;
@@ -247,9 +255,9 @@ void wcs_tp2xy (struct wcs_info *wcs, double fx, double fy,
     }
 
     /* Handle case of origin */
-    if(cotsq < SAFE) {  /* use series rt * tan(rt) to O(rt^6) */
+    if(cotsq < SAFE) {  /* use series rt / tan(rt) to O(rt^6) */
       tt = rt*rt;
-      fac = (((2.0/15.0) * tt + (1.0/3.0)) * tt + 1.0) * tt;
+      fac = (((-2.0/945.0) * tt + (1.0/45.0)) * tt - (1.0/3.0)) * tt + 1.0;
     }
     else  /* actual expression: rt / cot(theta) */
       fac = rt / cot;
@@ -268,8 +276,8 @@ void wcs_tp2xy (struct wcs_info *wcs, double fx, double fy,
 
 void wcs_xy2tp (struct wcs_info *wcs, double x, double y,
 		double *fx, double *fy) {
-  double rtsq, csct, tt, ttsq, rfac;
-  double fac, rt;
+  double rtsq, csct, tt, ttsq, rfac, drfac;
+  double fac, rt, dtt;
   int i, iter;
 
   /* First transform from pixels to focal plane angular coords. */
@@ -300,24 +308,32 @@ void wcs_xy2tp (struct wcs_info *wcs, double x, double y,
       /* Invert polynomial to get tt = 90-theta */
       tt = rt;
 
-      for(iter = 0; iter < 3; iter++) {
+      for(iter = 0; iter < 10; iter++) {
 	rfac = wcs->pc[wcs->mpc];
-	for(i = wcs->mpc-1; i > 0; i++)
+	drfac = wcs->mpc * wcs->pc[wcs->mpc];
+	for(i = wcs->mpc-1; i > 0; i--) {
 	  rfac = rfac * tt + wcs->pc[i];
+	  drfac = drfac * tt + i * wcs->pc[i];
+	}
 
-	tt = rt / rfac;
+	dtt = (tt*rfac - rt) / drfac;
+
+	if(fabs(dtt) < TINY)
+	  break;
+
+	tt -= dtt;
       }
 
       ttsq = tt*tt;
 
-      if(ttsq < SAFE)  /* tt/rt * series tan(tt)/tt to O(rt^4) */
-	fac = (((2.0/15.0) * ttsq + (1.0/3.0)) * ttsq + 1.0) / rfac;
+      if(ttsq < SAFE)  /* tt/rt * series tan(tt)/tt to O(rt^6) */
+	fac = ((((17.0/315.0) * ttsq + (2.0/15.0)) * ttsq + (1.0/3.0)) * ttsq + 1.0) / rfac;
       else  /* actual expression: cot(theta) / rt = tan(tt) / rt */
 	fac = tan(tt) / rt;
     }
     else {
-      if(rtsq < SAFE)  /* use series for tan(rt) / rt to O(rt^4) */
-	fac = ((2.0/15.0) * rtsq + (1.0/3.0)) * rtsq + 1.0;
+      if(rtsq < SAFE)  /* use series for tan(rt) / rt to O(rt^6) */
+	fac = (((17.0/315.0) * rtsq + (2.0/15.0)) * rtsq + (1.0/3.0)) * rtsq + 1.0;
       else  /* actual expression: cot(theta) / rt = tan(rt) / rt */
 	fac = tan(rt) / rt;
     }
