@@ -17,7 +17,7 @@ CFITSIO_CFLAGS=-I/usr/local/include
 
 ### End constants section ###
 
-SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c refract.c source.c strutil.c stumpff.c wcs.c
+SRCS=airmass.c bary.c dtai.c dtdb.c dsincos.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c refract.c skylevel.c source.c strutil.c stumpff.c wcs.c
 OBJS=${SRCS:%.c=%.o}
 
 EXTRA_SRCS=cnf.c cvtunit.c fitsutil.c tcutil.c util.c

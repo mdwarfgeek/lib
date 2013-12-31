@@ -634,6 +634,12 @@ void refract_vec (double *refco, unsigned char unref,
 		  double *vi, double *vo,
 		  double *dvidt, double *dvodt);
 
+/* -- skylevel.c -- */
+
+void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
+	       float clip_low, float clip_high,
+	       float *skylev_r, float *sigma_r);
+
 /* -- source.c -- */
 
 void source_init (void);
