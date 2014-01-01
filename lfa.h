@@ -568,7 +568,8 @@ int observer_update (struct observer *obs,
 		     struct jpleph_table *jpltab,
 		     struct jpleph_table *tetab,
 		     struct iers_table *iertab,
-		     double tt,
+		     double utc,
+		     double ttmutc,
 		     unsigned char mask);
 
 void observer_ast2obs (struct observer *obs,

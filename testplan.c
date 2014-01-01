@@ -25,7 +25,7 @@ int main (int argc, char *argv[]) {
   int utcdn;
   double utcdf;
 
-  double dtt, tt;
+  double dtt;
 
   /* MEarth */
   double longitude = -399161.0*AS_TO_RAD;  /* -110 52 41.0 */
@@ -113,15 +113,12 @@ int main (int argc, char *argv[]) {
     /* Look up delta(TT) */
     dtt = dtai(&dtab, utcdn, utcdf) + DTT;
 
-    /* Easy to use but less precise TT as MJD */
-    tt = utcdn + utcdf + dtt/DAY;
-
     /* How long since last update? */
     timersub(&tv, &tvslow, &tvdiff);
 
     /* Update */
     if(!running || tvdiff.tv_sec >= 10) {
-      rv = observer_update(&obs, &jtab, tptr, &itab, tt,
+      rv = observer_update(&obs, &jtab, tptr, &itab, utcdn+utcdf, dtt,
 			   OBSERVER_UPDATE_ALL);
       if(rv)
 	fatal(1, "observer_update: %d (%s)", rv, strerror(errno));
@@ -129,7 +126,7 @@ int main (int argc, char *argv[]) {
       tvslow = tv;
     }
     else {
-      rv = observer_update(&obs, &jtab, tptr, &itab, tt,
+      rv = observer_update(&obs, &jtab, tptr, &itab, utcdn+utcdf, dtt,
 			   OBSERVER_UPDATE_PFB |
 			   OBSERVER_UPDATE_ERA |
 			   OBSERVER_UPDATE_SOLSYS);

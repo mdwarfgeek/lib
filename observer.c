@@ -52,10 +52,11 @@ int observer_update (struct observer *obs,
 		     struct jpleph_table *jpltab,
 		     struct jpleph_table *tetab,
 		     struct iers_table *iertab,
-		     double tt,
+		     double utc,
+		     double ttmutc,
 		     unsigned char mask) {
   int rv, i;
-  double jdtk, jctk, sp;
+  double tt, jdtk, jctk, sp;
 
   double sera, cera;
   double tmpp[3][3], tmpv[3][3];
@@ -63,16 +64,17 @@ int observer_update (struct observer *obs,
   double tei, dteidt, tev[3], dtevdt[3];
 
   /* Time arguments: TT Julian days and centuries since 2000.0 */
+  tt = utc + ttmutc / DAY;
+
   jdtk = (tt-J2K);
   jctk = jdtk / (100*JYR);
 
   if(mask & OBSERVER_UPDATE_IERS) {
     if(iertab) {
       /* Update Earth orientation parameters from IERS tabulation.
-	 Strictly, the argument should be UTC, but TT is used here. 
 	 dX and dY are ignored, because we use IAU 2000B rather
          than 2000A nutation, so strictly they don't apply. */
-      rv = iers_fetch(iertab, tt,
+      rv = iers_fetch(iertab, utc,
 		      &(obs->dut1), &(obs->xp), &(obs->yp),
 		      (double *) NULL, (double *) NULL);
       if(rv < 0)
@@ -82,6 +84,9 @@ int observer_update (struct observer *obs,
       obs->xp *= AS_TO_RAD;
       obs->yp *= AS_TO_RAD;
     }
+    else
+      /* Use UTC as an approximation to UT1 */
+      obs->dut1 = ttmutc;
     
     /* TIO locator, kind of pointless if we are doing nutation,
        which is only accurate to about 1 mas with 2000B, but
