@@ -19,6 +19,6 @@ double v_airmass (double v[3]) {
   secz = sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) / z;
   szm = secz - 1.0;
 
-  return(((0.0008083*szm + 0.002875) * szm + 0.0018167) * szm + secz + 1.0);
+  return(secz - ((0.0008083*szm + 0.002875) * szm + 0.0018167) * szm);
 }
 
