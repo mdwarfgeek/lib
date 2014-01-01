@@ -48,6 +48,36 @@ void observer_init (struct observer *obs,
   obs->dtdb = 0;
 }
 
+void observer_geoc (struct observer *obs) {
+
+  /* Dummy observer position */
+  obs->latitude = 0;
+  obs->longitude = 0;
+  obs->height = 0;
+
+  /* Observer at geocentre */
+  obs->itgop[0] = 0;
+  obs->itgop[1] = 0;
+  obs->itgop[2] = 0;
+
+  /* Earth gravitational potential at observer = 0 for no correction */
+  obs->gpearth = 0;
+
+  /* Dummy observer longitude and latitude rotation matrices */
+  m_identity(obs->lmm);
+  m_identity(obs->phm);
+
+  /* Minimum impact parameter for light deflection: solar radius in AU */
+  obs->minbdefl = RSUN / AU;
+
+  /* These are optional, so set default values that do nothing */
+  obs->dut1 = 0;
+  obs->xp = 0;
+  obs->yp = 0;
+
+  obs->dtdb = 0;
+}
+
 int observer_update (struct observer *obs,
 		     struct jpleph_table *jpltab,
 		     struct jpleph_table *tetab,

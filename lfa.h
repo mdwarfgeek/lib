@@ -555,6 +555,8 @@ void observer_init (struct observer *obs,
 		    double latitude,   /* WGS84 latitude, N positive */
 		    double height);    /* Height above geoid, m */
 
+void observer_geoc (struct observer *obs);
+
 #define OBSERVER_UPDATE_IERS   0x01
 #define OBSERVER_UPDATE_NUT    0x02
 #define OBSERVER_UPDATE_PFB    0x04
