@@ -14,16 +14,8 @@
 #undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#undef ABS
-#define ABS(x) ((x) >= 0 ? (x) : -(x))
-
 #undef SWAP
 #define SWAP(x, y, t) (t) = (x); (x) = (y); (y) = (t)
-
-#define ARRAYLEN(a) (sizeof(a)/sizeof((a)[0]))
-
-#define NINT(a) ((int) ((a)+((a) < 0 ? -0.5 : 0.5)))
-#define NLNG(a) ((long) ((a)+((a) < 0 ? -0.5 : 0.5)))
 
 /* --Variables-- */
 
