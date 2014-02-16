@@ -299,6 +299,24 @@ struct source {
   double psi;       /* universal eccentric anomaly, last value to speed up iterations */
 };
 
+struct rng_state {
+#define RNG_RR 191
+#define RNG_RQ (RNG_RR*2)
+#define RNG_RL (RNG_RR*4)
+
+#define RNG_NR (RNG_RR+1)
+#define RNG_NQ (RNG_NR*2)
+#define RNG_NL (RNG_NR*4)
+
+  uint64_t a[RNG_NQ];
+  uint64_t *p;
+  int r;
+
+  double gauss;
+  unsigned char havegauss;
+  unsigned char haveieee;
+};
+
 struct wcs_info {
   double a;
   double b;
@@ -637,11 +655,42 @@ void refract_vec (double *refco, unsigned char unref,
 		  double *vi, double *vo,
 		  double *dvidt, double *dvodt);
 
+/* -- rng.c: random number generation -- */
+
+/* User level routines: call rng_init() to initialize and seed the
+   generator, and then rng_fetch() to fetch n random numbers.  The
+   distribution is uniform in [0,1).  Order of the sequence is
+   guaranteed regardless of how many numbers are fetched in each
+   call.  For efficiency, fetch as many numbers at a time as
+   possible, preferably multiples of RNG_RQ.  Internal buffering
+   is used where necessary so we can satisfy any size of request. */
+void rng_init (struct rng_state *s, uint32_t seed);
+void rng_fetch_uniform (struct rng_state *s, double *a, int n);
+void rng_fetch_gauss (struct rng_state *s, double *a, int n);
+
 /* -- skylevel.c -- */
 
 void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
 	       float clip_low, float clip_high,
 	       float *skylev_r, float *sigma_r);
+
+/* -- sort.c: sorting and selection -- */
+
+/* Select the k'th smallest of il..ir elements of size s, each 
+   containing data of the given datatype at offset o.  The offset
+   within a structure can be determined using offsetof() from
+   stddef.h.  Returns a pointer to the element.  */
+
+void *fquickselect (void *list, size_t k, size_t n, size_t s, size_t o);
+void *dquickselect (void *list, size_t k, size_t n, size_t s, size_t o);
+void *iquickselect (void *list, size_t k, size_t n, size_t s, size_t o);
+
+/* Sort n elements of size s.  Allocates n * sizeof(size_t) storage
+   on the stack, which could be a problem for large arrays.  */
+
+void fquicksort (void *list, size_t n, size_t s, size_t o);
+void dquicksort (void *list, size_t n, size_t s, size_t o);
+void iquicksort (void *list, size_t n, size_t s, size_t o);
 
 /* -- source.c -- */
 
