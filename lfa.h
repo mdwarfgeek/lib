@@ -14,6 +14,8 @@
 
 #include <stdio.h>  /* for FILE */
 #include <stdint.h>
+#include <float.h>
+#include <math.h>
 
 /* -- Physical, Mathematical and Astronomical constants -- */
 
@@ -343,9 +345,10 @@ struct wcs_info {
   int mpc;              /* last populated index in pc array */
 };
 
-/* -- Miscellaneous useful macros and inline functions -- */
+/* -- Miscellaneous useful macros -- */
 
-/* Inline sine and cosine in one operation, for arguments already
+/* rdsincos(angle, s, c)
+   Inline sine and cosine in one operation, for arguments already
    in or reduced to appropriate range (usually using fmod).  In the
    library, this is called with arguments in (-TWOPI,TWOPI), but on
    x87 the allowed range for the fsincos instruction is much larger
@@ -356,15 +359,30 @@ struct wcs_info {
    which should inline many math.h functions, but doesn't seem to
    know about fsincos (even if one uses the sincos GNU extension
    provided by glibc, at least on my system). */
+
+/* ilogtwo(i, l)
+   Computes l = floor(log2(i)).  The strange name is to avoid
+   conflicting with various other implementations (e.g. NetBSD). */
+
 #if defined(__GNUC__) && (defined(__i386) || defined(__amd64))
-/* x86 assembler routine */
+/* Inline x86 assembler routines */
 #define rdsincos(a, s, c) __asm__ ("fsincos" : "=t" (c), "=u" (s) : "0" (a))
+#define ilogtwo(i, l) __asm__ ("bsr %1, %0" : "=r" (l) : "mr" (i))
 #else
-/* Generic C implementation using library functions */
-#define rdsincos(a, s, c) {			\
+#define rdsincos(a, s, c)  			\
   (s) = sin(a);					\
-  (c) = cos(a);					\
-}
+  (c) = cos(a)
+#if defined(__GNUC__) && (__GNUC__ >= 3 && __GNUC_MINOR__ >= 2 && __GNUC_PATCHLEVEL__ >= 2)
+/* Use GCC count leading zeros builtin */
+#define ilogtwo(i, l) (l) = 8*sizeof(i) - 1 - __builtin_clz(i)
+#elif FLT_RADIX == 2
+/* Using ilogb is probably better than a loop provided we have
+   hardware floating point. */
+#define ilogtwo(i, l) (l) = ilogb((double) (i))
+#else
+/* Weird architecture.  Note that this depends on automatic truncation. */
+#define ilogtwo(i, l) (l) = log2((double) (i))
+#endif
 #endif
 
 /* Wrap angle to [0, TWOPI) */
