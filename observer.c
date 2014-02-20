@@ -267,6 +267,7 @@ int observer_update (struct observer *obs,
     obs->gpsun = GMSUN / (LIGHT*LIGHT * obs->hdist * AU);
   }
 
+  obs->utc = utc;
   obs->tt = tt;
 
   return(0);

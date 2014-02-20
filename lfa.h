@@ -200,6 +200,7 @@ struct observer {
   double refco[NREFCO];    /* refraction coefficients */
 
   /* Time */
+  double utc;
   double tt;
   double tdb;
   double dtdb;
