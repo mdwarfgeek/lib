@@ -90,6 +90,11 @@ void source_star_vec (struct source *src,
   memcpy(&(src->ref_n[0]), n, sizeof(src->ref_n));
   if(dndt)
     memcpy(&(src->ref_dndt[0]), dndt, sizeof(src->ref_dndt));
+  else {
+    src->ref_dndt[0] = 0;
+    src->ref_dndt[1] = 0;
+    src->ref_dndt[2] = 0;
+  }
 
   src->pr = pr;
 
