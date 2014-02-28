@@ -1,4 +1,4 @@
-# Makefile for liblfa: lightweight fundamental astronomy library.
+# Makefile for liblfa
 
 ### Constants: edit to suit your system ###
 
@@ -6,7 +6,7 @@
 #CC=gcc
 
 # Compiler flags
-CFLAGS=-Wall -g -O3 -ffast-math -fPIC -I$(HOME)/include
+CFLAGS=-std=gnu99 -Wall -g -O3 -ffast-math -fPIC -I$(HOME)/include
 
 # Recommended flags for modern cpu
 # DEBUG: -g
