@@ -1,13 +1,5 @@
-/* lfa.h: positional astronomy subroutines.
+/* lfa.h: positional astronomy subroutines and other bits.
           various source files, see below. */
-
-/* TODO: fix up implementation in iers.c and other ephemeris type routines
-         to ensure correct handling of running off the end.
-         add local math header and some macros so we can use sincos()
-         portably.  this should make it easier to use CORDIC efficiently
-	 when porting to hardware later.  possibly also use hypot()
-	 svr4/bsd/c99 routine where applicable, and investigate ways
-	 to implement robust vector norms. */
 
 #ifndef LFA_H
 #define LFA_H
@@ -25,11 +17,11 @@
 
 /* Fundamental (defining) constants, mostly IAU and IERS */
 
-#define GMSUN  1.32712440041e20  /* m^3 / s^2, IAU 2009 system, TDB compatible */
+#define GMSUN  1.32712440041e20  /* m^3 / s^2, IAU 2009, TDB compatible */
 #define AU     149597870700.0    /* m, IAU 2009 system */
 #define LIGHT  2.99792458e8      /* m/s, definition */
 
-#define GMEARTH 3.986004356e14     /* m^3 / s^2, IAU 2009 system, TDB compatible */
+#define GMEARTH 3.986004356e14     /* m^3 / s^2, IAU 2009, TDB compatible */
 #define AEARTH  6378137.0          /* m, WGS84 */
 #define FEARTH (1.0/298.257223563) /* WGS84 */
 
