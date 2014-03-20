@@ -27,19 +27,19 @@ static size_t swap_fread (void *ptr, size_t size, size_t nmemb, FILE *fp) {
 
   switch(size) {
   case 2:
-    for(i = 0, p = (uint8_t *) ptr; i < rv; i += 2, p += 2) {
+    for(i = 0, p = (uint8_t *) ptr; i < rv; i++, p += 2) {
       BSWAP16(p);
     }
 
     break;
   case 4:
-    for(i = 0, p = (uint8_t *) ptr; i < rv; i += 4, p += 4) {
+    for(i = 0, p = (uint8_t *) ptr; i < rv; i++, p += 4) {
       BSWAP32(p);
     }
 
     break;
   case 8:
-    for(i = 0, p = (uint8_t *) ptr; i < rv; i += 8, p += 8) {
+    for(i = 0, p = (uint8_t *) ptr; i < rv; i++, p += 8) {
       BSWAP64(p);
     }
 
