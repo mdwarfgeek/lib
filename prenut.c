@@ -176,7 +176,7 @@ void nut00b (double t,
     for(iarg = 0; iarg < 5; iarg++)
       arg += nut_coef[ils].m[iarg] * nut_arg[iarg];
     
-    dsincos(arg, &sinarg, &cosarg);
+    rdsincos(arg, sinarg, cosarg);
 
     /* Accumulate sums */
     dpsi += (nut_coef[ils].a + nut_coef[ils].ap * t) * sinarg + nut_coef[ils].app * cosarg;
