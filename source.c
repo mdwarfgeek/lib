@@ -10,22 +10,6 @@
 #define KEPLER_PREC    1.0e-13
 #define KEPLER_MAXITER 20
 
-static double eclm[3][3];
-
-/* Init runtime constants, needed before calls to use elements */
-
-void source_init (void) {
-  double ang[NPNANG];
-
-  /* GCRS to mean ecliptic of J2000, for lazy people */
-  pfb06ang(0.0, ang);
-
-  m_identity(eclm);
-  euler_rotate(eclm, 3,  ang[PNANG_PSI]);
-  euler_rotate(eclm, 1, -ang[PNANG_PHI]);
-  euler_rotate(eclm, 3, -ang[PNANG_GAM]);
-}
-
 /* Creates source structure from star coordinates */
 
 void source_star (struct source *src,
@@ -153,7 +137,7 @@ void source_elem (struct source *src,
   euler_rotate(tmp, 3, -longperi);
   euler_rotate(tmp, 1, -incl);
   euler_rotate(tmp, 3, -anode);
-  m_x_m(eclm, tmp, rot);
+  m_x_m(gcrs2ecl, tmp, rot);
 
   /* Reference epoch */
   src->ref_tdb = epoch;

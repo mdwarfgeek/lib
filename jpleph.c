@@ -6,19 +6,68 @@
 #include "lfa.h"
 #include "util.h"
 
+#define JPLEPH_NBODY 12
+#define JPLEPH_MAXPT 15
+
 static void cheby (double tc, double pfac, double vfac,
 		   double *coef, int ncoef, int ncpt,
 		   double *pos, double *vel);
 
+static int32_t ncpt_body[] = { 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+                               2,    /* nutation */
+                               3,    /* libration */
+                               3,    /* euler */
+                               1 };  /* time ephemeris integral */
+
+static size_t swap_fread (void *ptr, size_t size, size_t nmemb, FILE *fp) {
+  size_t i, rv;
+  uint8_t *p;
+
+  rv = fread(ptr, size, nmemb, fp);
+
+  switch(size) {
+  case 2:
+    for(i = 0, p = (uint8_t *) ptr; i < rv; i++, p += 2) {
+      BSWAP16(p);
+    }
+
+    break;
+  case 4:
+    for(i = 0, p = (uint8_t *) ptr; i < rv; i++, p += 4) {
+      BSWAP32(p);
+    }
+
+    break;
+  case 8:
+    for(i = 0, p = (uint8_t *) ptr; i < rv; i++, p += 8) {
+      BSWAP64(p);
+    }
+
+    break;
+  }
+
+  return(rv);
+}
+
 int jpleph_open (struct jpleph_table *p, int type, char *filename) {
   char title[252];
   char *namebuf = (char *) NULL, *np;
-  int32_t binvers, ncoeff, ncname, icon, ncon;
+  int32_t binvers, ncname, icon, ncon;
   int32_t ilc = -1;
+  int32_t b, recend;
+
+  uint32_t one = 1;
+  uint8_t mach_le, file_le;
 
 #ifdef DEBUG
   int i;
 #endif
+
+  /* Detect machine byte order */
+  if(*((uint16_t *) &one))
+    mach_le = 1;  /* little-endian */
+  else
+    mach_le = 0;
 
   /* Get default file from environment if none specified */
   if(!filename) {
@@ -39,14 +88,38 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
   /* Read header */
   if(type == 1) {  /* Ephcom / TE405 format */
     fread(&binvers, sizeof(binvers), 1, p->fp);
-    fread(&(p->denum), sizeof(p->denum), 1, p->fp);
-    fread(&ncoeff, sizeof(ncoeff), 1, p->fp);
-    fread(&(p->mjd_start), sizeof(p->mjd_start), 1, p->fp);
-    fread(&(p->mjd_end), sizeof(p->mjd_end), 1, p->fp);
-    fread(&(p->mjd_step), sizeof(p->mjd_step), 1, p->fp);
-    fread(&(p->au), sizeof(p->au), 1, p->fp);
-    fread(&(p->emratio), sizeof(p->emratio), 1, p->fp);
-    fread(&(p->npt), sizeof(p->npt), 1, p->fp);
+
+    if(ferror(p->fp)) {
+      fclose(p->fp);
+      return(-1);
+    }
+
+    if(feof(p->fp)) {
+      fclose(p->fp);
+      return(-3);  /* file damaged */
+    }
+
+    /* Detect file byte order - binvers should be a small number */
+    if(*((uint16_t *) &binvers))
+      file_le = 1;  /* little-endian */
+    else
+      file_le = 0;
+
+    if(mach_le != file_le) {
+      BSWAP32(&binvers);
+      p->read = swap_fread;
+    }
+    else
+      p->read = fread;
+
+    p->read(&(p->denum), sizeof(p->denum), 1, p->fp);
+    p->read(&(p->ncoeff), sizeof(p->ncoeff), 1, p->fp);
+    p->read(&(p->mjd_start), sizeof(p->mjd_start), 1, p->fp);
+    p->read(&(p->mjd_end), sizeof(p->mjd_end), 1, p->fp);
+    p->read(&(p->mjd_step), sizeof(p->mjd_step), 1, p->fp);
+    p->read(&(p->au), sizeof(p->au), 1, p->fp);
+    p->read(&(p->emratio), sizeof(p->emratio), 1, p->fp);
+    p->read(&(p->npt), sizeof(p->npt), 1, p->fp);
 
     if(ferror(p->fp)) {
       fclose(p->fp);
@@ -71,9 +144,9 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
       return(-1);
     }
 
-    fread(p->ipt, sizeof(int32_t), 3*p->npt, p->fp);
-    fread(&ncon, sizeof(ncon), 1, p->fp);
-    fread(&ncname, sizeof(ncname), 1, p->fp);
+    p->read(p->ipt, sizeof(int32_t), 3*p->npt, p->fp);
+    p->read(&ncon, sizeof(ncon), 1, p->fp);
+    p->read(&ncname, sizeof(ncname), 1, p->fp);
 
     /* Allocate space for names */
     namebuf = (char *) malloc(ncname+1);
@@ -102,12 +175,12 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     fread(title, 1, sizeof(title), p->fp);
 
     /* Compute record size */
-    p->recsize = ncoeff * sizeof(double);
+    p->recsize = p->ncoeff * sizeof(double);
 
     if(ilc >= 0) {
       /* Read constants */
       fseek(p->fp, p->recsize + ilc*sizeof(double), SEEK_SET);
-      fread(&(p->lc), sizeof(double), 1, p->fp);
+      p->read(&(p->lc), sizeof(double), 1, p->fp);
     }
 
     if(ferror(p->fp)) {
@@ -123,9 +196,7 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     }
   }
   else {  /* original JPL format */
-    p->npt = 13;
-
-    p->ipt = (int32_t *) malloc(3*p->npt * sizeof(int32_t));
+    p->ipt = (int32_t *) malloc(3*JPLEPH_MAXPT * sizeof(int32_t));
     if(!p->ipt) {
       fclose(p->fp);
       return(-1);
@@ -142,9 +213,8 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     fread(&ncon, sizeof(ncon), 1, p->fp);
     fread(&(p->au), sizeof(p->au), 1, p->fp);
     fread(&(p->emratio), sizeof(p->emratio), 1, p->fp);
-    fread(p->ipt, sizeof(int32_t), 3*(p->npt-1), p->fp);
+    fread(p->ipt, sizeof(int32_t), 3*JPLEPH_NBODY, p->fp);
     fread(&(p->denum), sizeof(p->denum), 1, p->fp);
-    fread(p->ipt + 3*(p->npt-1), sizeof(int32_t), 3, p->fp);
 
     if(ferror(p->fp)) {
       free((void *) p->ipt);
@@ -158,22 +228,71 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
       return(-3);  /* file damaged */
     }
 
-    /* Check eph. type and set record length */
-    switch(p->denum) {
-    case 200:
-      p->recsize = 6608;
-      break;
-    case 403:
-    case 405:
-    case 421:
-      p->recsize = 8144;
-      break;
-    case 404:
-    case 406:
-      p->recsize = 5824;
-      break;
-    default:
-      return(-2);
+    /* Detect file byte order - denum should be a small number */
+    if(*((uint16_t *) &(p->denum)))
+      file_le = 1;  /* little-endian */
+    else
+      file_le = 0;
+
+    if(mach_le != file_le) {
+      BSWAP64(&(p->mjd_start));
+      BSWAP64(&(p->mjd_end));
+      BSWAP64(&(p->mjd_step));
+      BSWAP32(&ncon);
+      BSWAP64(&(p->au));
+      BSWAP64(&(p->emratio));
+
+      for(b = 0; b < JPLEPH_NBODY; b++) {
+        BSWAP32(&(p->ipt[3*b]));
+        BSWAP32(&(p->ipt[3*b+1]));
+        BSWAP32(&(p->ipt[3*b+2]));
+      }
+
+      BSWAP32(&(p->denum));
+
+      p->read = swap_fread;
+    }
+    else
+      p->read = fread;
+
+    p->read(p->ipt + 3*JPLEPH_NBODY, sizeof(int32_t), 3, p->fp);
+
+    if(ncon > 400)
+      fseek(p->fp, 6*(ncon-400), SEEK_CUR);
+
+    p->read(p->ipt + 3*(JPLEPH_NBODY+1), sizeof(int32_t), 6, p->fp);
+
+    /* Figure out record size and number of bodies.  This trick
+       relies on the rest of the record being zero-padded, which
+       seems to be true for the files I have. */
+    p->ncoeff = 0;
+    p->npt = 0;
+
+    for(b = 0; b < JPLEPH_MAXPT; b++) {
+      if(p->ipt[3*b] > 0) {
+        recend = p->ipt[3*b] - 1 + ncpt_body[b]*p->ipt[3*b+1]*p->ipt[3*b+2];
+        
+        if(recend > p->ncoeff)
+          p->ncoeff = recend;
+
+        p->npt++;
+      }
+      else
+        break;
+    }
+
+    p->recsize = p->ncoeff * sizeof(double);
+
+    if(ferror(p->fp)) {
+      free((void *) p->ipt);
+      fclose(p->fp);
+      return(-1);
+    }
+    
+    if(feof(p->fp)) {
+      free((void *) p->ipt);
+      fclose(p->fp);
+      return(-3);  /* file damaged */
     }
   }    
 
@@ -249,16 +368,10 @@ int jpleph_fetch (struct jpleph_table *p, double mjd, int body,
   ncoef = p->ipt[3*body+1];
   nsub = p->ipt[3*body+2];
 
-  switch(body) {
-  case JPLEPH_NUTATION:
-    ncpt = 2;
-    break;
-  case TIMEEPH_TEI:
-    ncpt = 1;
-    break;
-  default:
+  if(body < sizeof(ncpt_body)/sizeof(ncpt_body[0]))
+    ncpt = ncpt_body[body];
+  else
     ncpt = 3;
-  }
 
   if(iptr < 0 || (iptr+ncpt*ncoef*nsub)*sizeof(double) > p->recsize)
     return(-3);  /* file damaged */
@@ -281,8 +394,8 @@ int jpleph_fetch (struct jpleph_table *p, double mjd, int body,
     }
 
     /* Read record */
-    rv = fread(p->buf, p->recsize, 1, p->fp);
-    if(rv != 1) {
+    rv = p->read(p->buf, sizeof(double), p->ncoeff, p->fp);
+    if(rv != p->ncoeff) {
       if(ferror(p->fp))
 	return(-1);
       else
