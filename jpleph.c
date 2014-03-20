@@ -21,26 +21,26 @@ static int32_t ncpt_body[] = { 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 
 static size_t swap_fread (void *ptr, size_t size, size_t nmemb, FILE *fp) {
   size_t i, rv;
-  uint8_t *p, t;
+  uint8_t *p;
 
   rv = fread(ptr, size, nmemb, fp);
 
   switch(size) {
   case 2:
     for(i = 0, p = (uint8_t *) ptr; i < rv; i += 2, p += 2) {
-      BSWAP16(p, t);
+      BSWAP16(p);
     }
 
     break;
   case 4:
     for(i = 0, p = (uint8_t *) ptr; i < rv; i += 4, p += 4) {
-      BSWAP32(p, t);
+      BSWAP32(p);
     }
 
     break;
   case 8:
     for(i = 0, p = (uint8_t *) ptr; i < rv; i += 8, p += 8) {
-      BSWAP64(p, t);
+      BSWAP64(p);
     }
 
     break;
@@ -57,7 +57,7 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
   int32_t b, recend;
 
   uint32_t one = 1;
-  uint8_t mach_le, file_le, t;
+  uint8_t mach_le, file_le;
 
 #ifdef DEBUG
   int i;
@@ -106,7 +106,7 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
       file_le = 0;
 
     if(mach_le != file_le) {
-      BSWAP32(&binvers, t);
+      BSWAP32(&binvers);
       p->read = swap_fread;
     }
     else
@@ -235,20 +235,20 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
       file_le = 0;
 
     if(mach_le != file_le) {
-      BSWAP64(&(p->mjd_start), t);
-      BSWAP64(&(p->mjd_end), t);
-      BSWAP64(&(p->mjd_step), t);
-      BSWAP32(&ncon, t);
-      BSWAP64(&(p->au), t);
-      BSWAP64(&(p->emratio), t);
+      BSWAP64(&(p->mjd_start));
+      BSWAP64(&(p->mjd_end));
+      BSWAP64(&(p->mjd_step));
+      BSWAP32(&ncon);
+      BSWAP64(&(p->au));
+      BSWAP64(&(p->emratio));
 
       for(b = 0; b < JPLEPH_NBODY; b++) {
-        BSWAP32(&(p->ipt[3*b]), t);
-        BSWAP32(&(p->ipt[3*b+1]), t);
-        BSWAP32(&(p->ipt[3*b+2]), t);
+        BSWAP32(&(p->ipt[3*b]));
+        BSWAP32(&(p->ipt[3*b+1]));
+        BSWAP32(&(p->ipt[3*b+2]));
       }
 
-      BSWAP32(&(p->denum), t);
+      BSWAP32(&(p->denum));
 
       p->read = swap_fread;
     }
