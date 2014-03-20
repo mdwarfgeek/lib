@@ -6,6 +6,9 @@
 #include "lfa.h"
 #include "util.h"
 
+#define JPLEPH_NBODY 12
+#define JPLEPH_MAXPT 15
+
 static void cheby (double tc, double pfac, double vfac,
 		   double *coef, int ncoef, int ncpt,
 		   double *pos, double *vel);
@@ -123,9 +126,7 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     }
   }
   else {  /* original JPL format */
-    p->npt = 13;
-
-    p->ipt = (int32_t *) malloc(3*p->npt * sizeof(int32_t));
+    p->ipt = (int32_t *) malloc(3*JPLEPH_MAXPT * sizeof(int32_t));
     if(!p->ipt) {
       fclose(p->fp);
       return(-1);
@@ -142,9 +143,41 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     fread(&ncon, sizeof(ncon), 1, p->fp);
     fread(&(p->au), sizeof(p->au), 1, p->fp);
     fread(&(p->emratio), sizeof(p->emratio), 1, p->fp);
-    fread(p->ipt, sizeof(int32_t), 3*(p->npt-1), p->fp);
+    fread(p->ipt, sizeof(int32_t), 3*JPLEPH_NBODY, p->fp);
     fread(&(p->denum), sizeof(p->denum), 1, p->fp);
-    fread(p->ipt + 3*(p->npt-1), sizeof(int32_t), 3, p->fp);
+
+    /* Check eph. type and set record length */
+    switch(p->denum) {
+    case 200:
+      p->recsize = 6608;
+      p->npt = JPLEPH_NBODY+1;
+      break;
+    case 403:
+    case 405:
+    case 421:
+      p->recsize = 8144;
+      p->npt = JPLEPH_NBODY+1;
+      break;
+    case 404:
+    case 406:
+      p->recsize = 5824;
+      p->npt = JPLEPH_NBODY;
+      break;
+    case 430:
+    case 431:
+      p->recsize = 7856;
+      p->npt = JPLEPH_NBODY+3;
+      break;
+    default:
+      return(-2);
+    }
+
+    fread(p->ipt + 3*JPLEPH_NBODY, sizeof(int32_t), 3, p->fp);
+
+    if(ncon > 400)
+      fseek(p->fp, 6*(ncon-400), SEEK_CUR);
+
+    fread(p->ipt + 3*(JPLEPH_NBODY+1), sizeof(int32_t), 6, p->fp);
 
     if(ferror(p->fp)) {
       free((void *) p->ipt);
@@ -156,24 +189,6 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
       free((void *) p->ipt);
       fclose(p->fp);
       return(-3);  /* file damaged */
-    }
-
-    /* Check eph. type and set record length */
-    switch(p->denum) {
-    case 200:
-      p->recsize = 6608;
-      break;
-    case 403:
-    case 405:
-    case 421:
-      p->recsize = 8144;
-      break;
-    case 404:
-    case 406:
-      p->recsize = 5824;
-      break;
-    default:
-      return(-2);
     }
   }    
 

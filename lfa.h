@@ -123,6 +123,8 @@ struct jpleph_table {
 #define JPLEPH_SUN       10
 #define JPLEPH_NUTATION  11
 #define JPLEPH_LIBRATION 12
+#define JPLEPH_EULER     13
+#define JPLEPH_TEI       14
 
 /* Time ephemerides, see http://timeephem.sourceforge.net/
    and Irwin & Fukushima (1999).  To use the integral,
