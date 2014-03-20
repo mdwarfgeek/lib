@@ -17,6 +17,22 @@
 #undef SWAP
 #define SWAP(x, y, t) (t) = (x); (x) = (y); (y) = (t)
 
+#undef BSWAP16
+#define BSWAP16(p, t) \
+  SWAP(*(((uint8_t *) (p)) + 0), *(((uint8_t *) (p)) + 1), t)
+
+#undef BSWAP32
+#define BSWAP32(p, t) \
+  SWAP(*(((uint8_t *) (p)) + 0), *(((uint8_t *) (p)) + 3), t); \
+  SWAP(*(((uint8_t *) (p)) + 1), *(((uint8_t *) (p)) + 2), t);
+
+#undef BSWAP64
+#define BSWAP64(p, t) \
+  SWAP(*(((uint8_t *) (p)) + 0), *(((uint8_t *) (p)) + 7), t); \
+  SWAP(*(((uint8_t *) (p)) + 1), *(((uint8_t *) (p)) + 6), t); \
+  SWAP(*(((uint8_t *) (p)) + 2), *(((uint8_t *) (p)) + 5), t); \
+  SWAP(*(((uint8_t *) (p)) + 3), *(((uint8_t *) (p)) + 4), t);
+
 /* --Variables-- */
 
 extern char progname[];

@@ -6,7 +6,7 @@
 #CC=gcc
 
 # Compiler flags
-CFLAGS=-Wall -g -O3 -ffast-math -fPIC -I$(HOME)/include
+CFLAGS=-Wall -Wno-strict-aliasing -g -O3 -ffast-math -fPIC -I$(HOME)/include
 
 # Recommended flags for modern cpu
 # DEBUG: -g

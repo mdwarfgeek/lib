@@ -101,7 +101,10 @@
 
 struct jpleph_table {
   FILE *fp;
+  size_t (*read) (void *, size_t, size_t, FILE *);
+
   int32_t denum;
+  int32_t ncoeff;
   int32_t recsize;
   long taboff;
 
