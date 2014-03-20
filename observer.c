@@ -92,6 +92,7 @@ int observer_update (struct observer *obs,
   double tmpp[3][3], tmpv[3][3];
 
   double tei, dteidt, tev[3], dtevdt[3];
+  double tmp_bep[3], tmp_bev[3], tmp_emp[3], tmp_emv[3];
 
   /* Time arguments: TT Julian days and centuries since 2000.0 */
   tt = utc + ttmutc / DAY;
@@ -201,20 +202,46 @@ int observer_update (struct observer *obs,
                                             pretty good approx. */
   }
 
-  if((mask & OBSERVER_UPDATE_TDB) && tetab) {
+  if(mask & OBSERVER_UPDATE_TDB) {
     /* Fetch time ephemeris integral and Earth velocity vector */
-    rv = jpleph_fetch(tetab, tt, TIMEEPH_TEI, &tei, &dteidt);
-    if(rv < 0)
-      return(rv);
+    if(jpltab->has_time) {
+      rv = jpleph_fetch(jpltab, tt, JPLEPH_EMB, tmp_bep, tmp_bev);
+      if(rv < 0)
+        return(rv);
+      
+      rv = jpleph_fetch(jpltab, tt, JPLEPH_MOON, tmp_emp, tmp_emv);
+      if(rv < 0)
+        return(rv);
 
-    rv = jpleph_fetch(tetab, tt, TIMEEPH_TEV, tev, dtevdt);
-    if(rv < 0)
-      return(rv);
+      rv = jpleph_fetch(jpltab, tt, JPLEPH_TEI, &tei, &dteidt);
+      if(rv < 0)
+        return(rv);
+      
+      for(i = 0; i < 3; i++)
+        /* SSB->Earth = SSB->EMB - Earth->EMB */
+        tev[i] = tmp_bev[i] - jpltab->emfac * tmp_emv[i];
 
-    /* Compute delta(TDB) in seconds */
-    obs->dtdb = ZTDB
-      + v_d_v(tev, obs->gop)*AU*AU / (LIGHT*LIGHT*DAY)  /* topocentric */
-      + tei*DAY / (1.0 - tetab->lc);                    /* geocentric */
+      /* Compute delta(TDB) in seconds */
+      obs->dtdb = 
+        v_d_v(tev, obs->gop)*AU*AU / (LIGHT*LIGHT*DAY) - tei;
+    }
+    else if(tetab) {
+      /* Fetch time ephemeris integral and Earth velocity vector */
+      rv = jpleph_fetch(tetab, tt, TIMEEPH_TEI, &tei, &dteidt);
+      if(rv < 0)
+        return(rv);
+      
+      rv = jpleph_fetch(tetab, tt, TIMEEPH_TEV, tev, dtevdt);
+      if(rv < 0)
+        return(rv);
+
+      /* Compute delta(TDB) in seconds */
+      obs->dtdb = ZTDB
+        + v_d_v(tev, obs->gop)*AU*AU / (LIGHT*LIGHT*DAY)  /* topocentric */
+        + tei*DAY / (1.0 - tetab->lc);                    /* geocentric */
+    }
+    else
+      obs->dtdb = 0;
   }
 
   obs->tdb = tt + obs->dtdb / DAY;

@@ -194,6 +194,11 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
       fclose(p->fp);
       return(-3);  /* file damaged */
     }
+
+    if(p->ipt[3*TIMEEPH_TEI] > 0)
+      p->has_time = 1;
+    else
+      p->has_time = 0;
   }
   else {  /* original JPL format */
     p->ipt = (int32_t *) malloc(3*JPLEPH_MAXPT * sizeof(int32_t));
@@ -262,6 +267,18 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
 
     p->read(p->ipt + 3*(JPLEPH_NBODY+1), sizeof(int32_t), 6, p->fp);
 
+    if(ferror(p->fp)) {
+      free((void *) p->ipt);
+      fclose(p->fp);
+      return(-1);
+    }
+    
+    if(feof(p->fp)) {
+      free((void *) p->ipt);
+      fclose(p->fp);
+      return(-3);  /* file damaged */
+    }
+
     /* Figure out record size and number of bodies.  This trick
        relies on the rest of the record being zero-padded, which
        seems to be true for the files I have. */
@@ -283,17 +300,16 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
 
     p->recsize = p->ncoeff * sizeof(double);
 
-    if(ferror(p->fp)) {
-      free((void *) p->ipt);
-      fclose(p->fp);
-      return(-1);
+    if(p->ipt[3*JPLEPH_TEI] > 0) {
+      /* LC for DE430t including time ephemeris integral.  The constants
+         used are the IAU 2006 Resol. 3 ones in the lfa.h header file. */
+      p->lc = (LB-LG)/(1.0-LG);
+
+      /* Flag existence of time ephemeris integral */
+      p->has_time = 1;
     }
-    
-    if(feof(p->fp)) {
-      free((void *) p->ipt);
-      fclose(p->fp);
-      return(-3);  /* file damaged */
-    }
+    else
+      p->has_time = 0;
   }    
 
   /* Convert dates to MJD */

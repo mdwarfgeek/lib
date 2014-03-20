@@ -63,15 +63,17 @@ int main (int argc, char *argv[]) {
   if(rv)
     fatal(1, "jpleph_open: %d", rv);
 
-  rv = jpleph_open(&ttab, 1, (char *) NULL);
-  if(rv == -2) {
-    printf("Time ephemeris problem, continuing without\n");
-    tptr = NULL;
+  if(!jtab.has_time) {
+    rv = jpleph_open(&ttab, 1, (char *) NULL);
+    if(rv == -2) {
+      printf("Time ephemeris problem, continuing without\n");
+      tptr = NULL;
+    }
+    else if(rv)
+      fatal(1, "jpleph_open: %d", rv);
+    else
+      tptr = &ttab;
   }
-  else if(rv)
-    fatal(1, "jpleph_open: %d", rv);
-  else
-    tptr = &ttab;
 
   /* Setup observer structure */
   observer_init(&obs, longitude, latitude, height);

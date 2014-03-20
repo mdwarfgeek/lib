@@ -119,6 +119,12 @@ struct jpleph_table {
 #define JPLEPH_NUTATION  11
 #define JPLEPH_LIBRATION 12
 #define JPLEPH_EULER     13
+
+/* JPL time ephemeris integral, giving the quantity
+   TT-TDB in seconds.  Note the sign compared to
+   TIMEEPH_TEI below, and that the constant ZTDB and
+   the conversion to TDB (the factor 1/(1-LC)) are
+   already included. */
 #define JPLEPH_TEI       14
 
 /* Time ephemerides, see http://timeephem.sourceforge.net/
@@ -137,6 +143,7 @@ struct jpleph_table {
   double emfac;
 
   /* Constants for time ephemerides */
+  uint8_t has_time;
   double lc;
 
   double *buf;
