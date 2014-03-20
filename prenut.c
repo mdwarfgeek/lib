@@ -237,6 +237,15 @@ void makepnm (double ang[NPNANG],
   euler_rotate(m, 1, -ang[PNANG_EPSA]);
 }
 
+void makeeclm (double ang[NPNANG],
+               double m[3][3]) {
+
+  m_identity(m);
+  euler_rotate(m, 3,  ang[PNANG_PSI]);
+  euler_rotate(m, 1, -ang[PNANG_PHI]);
+  euler_rotate(m, 3, -ang[PNANG_GAM]);
+}
+
 void makecim (double ang[NPNANG], double sxy,
 	      double dxnut, double dynut,
 	      double m[3][3]) {

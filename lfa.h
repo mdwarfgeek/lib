@@ -641,6 +641,10 @@ void nut00b (double jctk,
 void makepnm (double ang[NPNANG],
 	      double m[3][3]);
 
+/* Form GCRS to mean ecliptic of date matrix */
+void makeeclm (double ang[NPNANG],
+               double m[3][3]);
+
 /* Form GCRS to CIRS matrix */
 void makecim (double ang[NPNANG], double sxy,
 	      double dxnut, double dynut,  /* nutation correction, from IERS Bull. */
