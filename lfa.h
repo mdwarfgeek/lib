@@ -633,6 +633,9 @@ double v_parallactic (double sinphi, double cosphi, double v[3]);
 
 /* -- prenut.c: precession and nutation -- */
 
+/* Precomputed GCRS to mean ecliptic of J2000 */
+extern double gcrs2ecl[3][3];
+
 /* Precession and frame bias, IAU 2006, Fukushima-Williams angles */
 void pfb06ang (double jctk, double ang[NPNANG]);
 
