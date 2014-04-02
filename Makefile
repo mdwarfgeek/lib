@@ -91,7 +91,7 @@ testrefro: $(TESTREFRO_OBJS) liblfa.a
 	$(CC) -o testrefro $(TESTREFRO_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
 
 testsimple: $(TESTSIMPLE_OBJS) liblfa.a
-	$(CC) -o testsimple $(TESTSIMPLE_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
+	$(CC) -o testsimple $(TESTSIMPLE_OBJS) liblfa.a -lm
 
 teststumpff: $(TESTSTUMPFF_OBJS) liblfa.a
 	$(CC) -o teststumpff $(TESTSTUMPFF_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
