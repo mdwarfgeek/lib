@@ -41,6 +41,9 @@ TESTPLAN_OBJS=${TESTPLAN_SRCS:%.c=%.o}
 TESTREFRO_SRCS=testrefro.c refract.c util.c
 TESTREFRO_OBJS=${TESTREFRO_SRCS:%.c=%.o}
 
+TESTSIMPLE_SRCS=testsimple.c cvtunit.c util.c
+TESTSIMPLE_OBJS=${TESTSIMPLE_SRCS:%.c=%.o}
+
 TESTSTUMPFF_SRCS=teststumpff.c util.c
 TESTSTUMPFF_OBJS=${TESTSTUMPFF_SRCS:%.c=%.o}
 
@@ -87,6 +90,9 @@ testplan: $(TESTPLAN_OBJS) liblfa.a
 testrefro: $(TESTREFRO_OBJS) liblfa.a
 	$(CC) -o testrefro $(TESTREFRO_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
 
+testsimple: $(TESTSIMPLE_OBJS) liblfa.a
+	$(CC) -o testsimple $(TESTSIMPLE_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
+
 teststumpff: $(TESTSTUMPFF_OBJS) liblfa.a
 	$(CC) -o teststumpff $(TESTSTUMPFF_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
 
@@ -104,6 +110,7 @@ clean:
 	rm -f $(TESTOBS_OBJS) testobs
 	rm -f $(TESTPLAN_OBJS) testplan
 	rm -f $(TESTREFRO_OBJS) testrefro
+	rm -f $(TESTSIMPLE_OBJS) testsimple
 	rm -f $(TESTSUN_OBJS) testsun
 	rm -f $(TESTSTUMPFF_OBJS) teststumpff
 	rm -f $(TESTTP_OBJS) testtp
