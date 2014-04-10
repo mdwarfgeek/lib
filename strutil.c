@@ -76,7 +76,6 @@ int extractintfrac (char *str, int len,
 		    int f, int l,
 		    int *ival, double *fval) {
   static char *p, *dp, *ep;
-  int v, dig, ndig;
 
   p = extractstr(str, len, f, l);
   if(!p)
@@ -98,21 +97,15 @@ int extractintfrac (char *str, int len,
 
   /* Convert fractional part, if needed */
   if(dp) {
-    dp++;
-    ndig = strlen(dp);
+    *dp = '.';
 
-    if(ndig > 0) {
-      v = strtol(dp, &ep, 10);
+    if(*(dp+1)) {
+      *fval = strtod(dp, &ep);
       if(ep == dp)
 	return(-1);
       
       if(*p == '-')
-	v *= -1;
-
-      *fval = v;
-
-      for(dig = 0; dig < ndig; dig++)
-	(*fval) *= 0.1;
+	*fval *= -1;
     }
     else
       *fval = 0;
