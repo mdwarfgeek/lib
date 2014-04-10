@@ -60,7 +60,7 @@ int extractint (char *str, int len,
     return(-1);
 
   /* Now convert */
-  *val = strtol(p, &ep, 0);
+  *val = strtol(p, &ep, 10);
   if(ep == p)
     return(-1);
 
@@ -89,7 +89,7 @@ int extractintfrac (char *str, int len,
 
   /* Convert integer part */
   if(!dp || dp > p) {
-    *ival = strtol(p, &ep, 0);
+    *ival = strtol(p, &ep, 10);
     if(ep == p)
       return(-1);
   }
@@ -102,7 +102,7 @@ int extractintfrac (char *str, int len,
     ndig = strlen(dp);
 
     if(ndig > 0) {
-      v = strtol(dp, &ep, 0);
+      v = strtol(dp, &ep, 10);
       if(ep == dp)
 	return(-1);
       
