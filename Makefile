@@ -26,7 +26,7 @@ EXTRA_OBJS=${EXTRA_SRCS:%.c=%.o}
 TESTDSINCOS_SRCS=testdsincos.c
 TESTDSINCOS_OBJS=${TESTDSINCOS_SRCS:%.c=%.o}
 
-TESTMPC_SRCS=testmpc.c cvtunit.c util.c
+TESTMPC_SRCS=testmpc.c cvtunit.c tcutil.c util.c
 TESTMPC_OBJS=${TESTMPC_SRCS:%.c=%.o}
 
 TESTJPL_SRCS=testjpl.c cvtunit.c util.c
@@ -76,7 +76,7 @@ testdsincos: $(TESTDSINCOS_OBJS) liblfa.a
 	$(CC) -o testdsincos $(TESTDSINCOS_OBJS) liblfa.a -lm
 
 testmpc: $(TESTMPC_OBJS) liblfa.a
-	$(CC) -o testmpc $(TESTMPC_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
+	$(CC) -o testmpc $(TESTMPC_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lncurses -lm
 
 testjpl: $(TESTJPL_OBJS) liblfa.a
 	$(CC) -o testjpl $(TESTJPL_OBJS) -L$(HOME)/lib64 liblfa.a -lsofa_c -lm
