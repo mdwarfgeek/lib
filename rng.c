@@ -20,55 +20,35 @@
    floating point conversion on the 52-bit integers instead. */
 
 void rng_init (struct rng_state *s, uint32_t vl) {
-  uint32_t *pl;
+  uint64_t *p;
   int i, il;
-
-  uint64_t u = 1;
 
 #ifndef __STDC_IEC_559__
   double d = 1.0;
 #endif
 
-  pl = (uint32_t *) s->a;
+  p = &(s->a[0]);
 
-  /* Detect byte (well, really word) order.  There are various non
-     standard macros around for doing this, but runtime detection is
-     probably the least work and the most portable. */
-  if(*((uint32_t *) &u) == 1) {
-    /* Little-endian */
-    *pl++ = vl;
-    vl = INIT_ITER(vl, 1);
-    *pl++ = INIT_MSKH(vl);
+  *p = vl;
+  vl = INIT_ITER(vl, 1);
+  *p++ |= ((uint64_t) INIT_MSKH(vl)) << 32;
+
+  for(i = 1; i < RNG_RQ; i++) {
+    il = i+i;
     
-    for(i = 1; i < RNG_RQ; i++) {
-      il = i+i;
-      
-      vl = INIT_ITER(vl, il);
-      *pl++ = vl;
-      vl = INIT_ITER(vl, il+1);
-      *pl++ = INIT_MSKH(vl);
-    }
-  }
-  else {
-
-    /* Big-endian */
-    *pl++ = INIT_MSKH(vl);
-    vl = INIT_ITER(vl, 1);
-    *pl++ = vl;
-    
-    for(i = 1; i < RNG_RQ; i++) {
-      il = i+i;
-      
-      vl = INIT_ITER(vl, il);
-      *pl++ = INIT_MSKH(vl);
-      vl = INIT_ITER(vl, il+1);
-      *pl++ = vl;
-    }
-  }
-
-  for(il = RNG_RL; il < RNG_NL; il++) {
     vl = INIT_ITER(vl, il);
-    *pl++ = vl;
+    *p = vl;
+    vl = INIT_ITER(vl, il+1);
+    *p++ |= ((uint64_t) INIT_MSKH(vl)) << 32;
+  }
+
+  for(; i < RNG_NQ; i++) {
+    il = i+i;
+
+    vl = INIT_ITER(vl, il);
+    *p = vl;
+    vl = INIT_ITER(vl, il+1);
+    *p++ |= ((uint64_t) vl) << 32;
   }
 
   s->p = (uint64_t *) NULL;
