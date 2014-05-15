@@ -119,11 +119,6 @@ int extractintfrac (char *str, int len,
 char *sstrip (char *str) {
   char *p;
 
-  /* Stop at the first comment character */
-  p = strchr(str, '#');
-  if(p)
-    *p = '\0';
-
   /* First remove whitespace from start of string */
   while(*str != '\0' && isspace((unsigned char) *str))
     str++;
