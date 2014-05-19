@@ -5,12 +5,16 @@
 # C compiler
 #CC=gcc
 
-# Compiler flags
-CFLAGS=-std=gnu99 -Wall -Wno-strict-aliasing -g -O3 -ffast-math -fPIC -I$(HOME)/include
+# Optimization flags
 
-# Recommended flags for modern cpu
-# DEBUG: -g
-# OPTS: -g -O3 -ffast-math
+# DEBUG:
+#OPT=-g
+
+# OPT:
+OPT=-g -O3 -ffast-math
+
+# Compiler flags
+CFLAGS=-std=gnu99 -Wall -Wno-strict-aliasing $(OPT) -fPIC -I$(HOME)/include
 
 # Extra flags for CFITSIO
 CFITSIO_CFLAGS=-I/usr/local/include
