@@ -11,11 +11,30 @@
 #include "util.h"
 
 /* Prototypes for LAPACK Fortran routines */
+void dgelss_ (int *, int *, int *,
+              double *, int *, double *, int *, double *, double *, int *,
+              double *, int *, int *);
 void dgesvd_ (char *, char *,
 	      int *, int *, double *, int *,
 	      double *, double *, int *, double *, int *,
 	      double *, int *, int *, unsigned int, unsigned int);
 void dpotrf_ (char *, int *, double *, int *, int *, unsigned int);
+
+/* Computes minimum norm solution only for a linear least squares
+   problem.  Simple n=1 driver for the LAPACK dgelss routine. */
+
+int svdsolve (double *a, double *b, int m, double scale) {
+  int lwork = 6*m;
+  double s[m], work[lwork];
+  double rcond = -1.0;
+  int nrhs = 1, rank, info;
+
+  dgelss_(&m, &m, &nrhs,
+          a, &m, b, &m, s, &rcond, &rank,
+          work, &lwork, &info);
+
+  return(info);
+}
 
 /* Computes minimum norm solution and covariance matrix for a linear
    least squares problem. */
