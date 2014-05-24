@@ -79,7 +79,7 @@ MAKE_quickselect(iquickselect, int)
 
 #define MAKE_quicksort(FUNC, DATATYPE)                          \
 void FUNC (void *list, size_t n, size_t s, size_t o) {          \
-  size_t il, ir, isl, isr, ipiv, nsr, i;                        \
+  size_t il, ir, isl, isr, nl, nr, ipiv, nsr, i;                \
   DATATYPE vpiv, vcur;                                          \
   char tmp[s];                                                  \
                                                                 \
@@ -91,11 +91,22 @@ void FUNC (void *list, size_t n, size_t s, size_t o) {          \
                                                                 \
     if(il < isl) {  /* work to do on the left? */               \
       /* work to do on the right? */                            \
-      if(ir > isr)  /* recursive call */                        \
-        FUNC(B(isr+1), ir-isr, s, o);                           \
+      if(ir > isr) {                                            \
+        nl = isl-il;                                            \
+        nr = ir-isr;                                            \
                                                                 \
-      /* Do the left */                                         \
-      ir = isl-1;                                               \
+        /* Recurse into the smaller side first */               \
+        if(nl > nr) {                                           \
+          FUNC(B(isr+1), nr, s, o);                             \
+          ir = isl-1;                                           \
+        }                                                       \
+        else {                                                  \
+          FUNC(B(il), nl, s, o);                                \
+          il = isr+1;                                           \
+        }                                                       \
+      }                                                         \
+      else                                                      \
+        ir = isl-1;                                             \
     }                                                           \
     else if(ir > isr) {  /* work to do on the right? */         \
       /* Do the right */                                        \
