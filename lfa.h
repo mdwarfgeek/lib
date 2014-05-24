@@ -711,16 +711,29 @@ void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
    within a structure can be determined using offsetof() from
    stddef.h.  Returns a pointer to the element.  */
 
-void *fquickselect (void *list, size_t k, size_t n, size_t s, size_t o);
-void *dquickselect (void *list, size_t k, size_t n, size_t s, size_t o);
-void *iquickselect (void *list, size_t k, size_t n, size_t s, size_t o);
+float fquickselect (float *list, size_t k, size_t n);
+double dquickselect (double *list, size_t k, size_t n);
+int iquickselect (int *list, size_t k, size_t n);
 
-/* Sort n elements of size s.  Allocates n * sizeof(size_t) storage
-   on the stack, which could be a problem for large arrays.  */
+void *fquickselect_gen (void *list, void *tmp,
+                        size_t k, size_t n, size_t s, size_t o);
+void *dquickselect_gen (void *list, void *tmp,
+                        size_t k, size_t n, size_t s, size_t o);
+void *iquickselect_gen (void *list, void *tmp,
+                        size_t k, size_t n, size_t s, size_t o);
 
-void fquicksort (void *list, size_t n, size_t s, size_t o);
-void dquicksort (void *list, size_t n, size_t s, size_t o);
-void iquicksort (void *list, size_t n, size_t s, size_t o);
+/* Sort n elements of size s, using recursion on the call stack. */
+
+void fquicksort (float *list, size_t n);
+void dquicksort (double *list, size_t n);
+void iquicksort (int *list, size_t n);
+
+void fquicksort_gen (void *list, void *tmp,
+                     size_t n, size_t s, size_t o);
+void dquicksort_gen (void *list, void *tmp,
+                     size_t n, size_t s, size_t o);
+void iquicksort_gen (void *list, void *tmp,
+                     size_t n, size_t s, size_t o);
 
 /* -- source.c -- */
 
