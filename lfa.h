@@ -735,6 +735,14 @@ void dquicksort_gen (void *list, void *tmp,
 void iquicksort_gen (void *list, void *tmp,
                      size_t n, size_t s, size_t o);
 
+/* My usual "medsig" routine using median and MAD scaled to Gaussian
+   RMS equivalent.  Implemented using selection internally, and
+   doesn't take the mean of the middle two elements if n is even,
+   unlike the original routines. */
+
+void dmedsig (double *list, size_t n, double *median_r, double *sigma_r);
+void fmedsig (float *list, size_t n, float *median_r, float *sigma_r);
+
 /* -- source.c -- */
 
 void source_init (void);

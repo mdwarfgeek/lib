@@ -176,3 +176,43 @@ void fquicksort_gen (void *list, void *tmp,
 void iquicksort_gen (void *list, void *tmp,
                      size_t n, size_t s, size_t o)
   MAKE_quicksort(iquicksort_gen, int);
+
+/* My usual "medsig" routine using median and MAD scaled to Gaussian
+   RMS equivalent.  Lives here because I couldn't think of a better
+   place for it. */
+
+#define MAKE_medsig(DATATYPE, TQS, TABS) {                      \
+  size_t i, m;                                                  \
+  DATATYPE median;                                              \
+                                                                \
+  if(n < 1) {                                                   \
+    /* Special case - can't do anything */                      \
+    if(median_r)                                                \
+      *median_r = 0;                                            \
+                                                                \
+    if(sigma_r)                                                 \
+      *sigma_r = 0;                                             \
+                                                                \
+    return;                                                     \
+  }                                                             \
+                                                                \
+  m = n/2;                                                      \
+                                                                \
+  median = TQS(list, m, n);                                     \
+                                                                \
+  if(median_r)                                                  \
+    *median_r = median;                                         \
+                                                                \
+  if(sigma_r) {                                                 \
+    for(i = 0; i < n; i++)                                      \
+      list[i] = TABS(list[i] - median);                         \
+                                                                \
+    *sigma_r = 1.482602218505601 * TQS(list, m, n);             \
+  }                                                             \
+}
+
+void dmedsig (double *list, size_t n, double *median_r, double *sigma_r)
+  MAKE_medsig(double, dquickselect, fabs)
+
+void fmedsig (float *list, size_t n, float *median_r, float *sigma_r)
+  MAKE_medsig(float, fquickselect, fabsf)
