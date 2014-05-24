@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "lfa.h"
+
 #define B(i) (((char *) list) + (i)*s)
 #define V(i, t) *((t *) (B(i)+o))
 #define X(i, j)                                 \
@@ -73,7 +75,7 @@ MAKE_quickselect(dquickselect, double)
 MAKE_quickselect(fquickselect, float)
 MAKE_quickselect(iquickselect, int)
 
-/* QuickSort, with internal recursion to avoid function call overhead */
+/* QuickSort */
 
 #define MAKE_quicksort(FUNC, DATATYPE)                          \
 void FUNC (void *list, size_t n, size_t s, size_t o) {          \
@@ -81,44 +83,23 @@ void FUNC (void *list, size_t n, size_t s, size_t o) {          \
   DATATYPE vpiv, vcur;                                          \
   char tmp[s];                                                  \
                                                                 \
-  struct {                                                      \
-    size_t il;                                                  \
-    size_t ir;                                                  \
-  } stack[n];                                                   \
-  int nstack = 0;                                               \
-                                                                \
-  /* Trap for single or zero element lists */                   \
-  if(n <= 1)                                                    \
-    return;                                                     \
-                                                                \
   il = 0;                                                       \
   ir = n-1;                                                     \
                                                                 \
-  for(;;) {                                                     \
+  while(il < ir) {                                              \
     PART(il, ir, DATATYPE);                                     \
                                                                 \
-    isl--;                                                      \
-    isr++;                                                      \
-                                                                \
     if(il < isl) {  /* work to do on the left? */               \
-      /* Stack any work on the right */                         \
-      if(ir > isr) {                                            \
-        stack[nstack].il = isr;                                 \
-        stack[nstack].ir = ir;                                  \
-        nstack++;                                               \
-      }                                                         \
+      /* work to do on the right? */                            \
+      if(ir > isr)  /* recursive call */                        \
+        FUNC(B(isr+1), ir-isr, s, o);                           \
                                                                 \
       /* Do the left */                                         \
-      ir = isl;                                                 \
+      ir = isl-1;                                               \
     }                                                           \
     else if(ir > isr) {  /* work to do on the right? */         \
       /* Do the right */                                        \
-      il = isr;                                                 \
-    }                                                           \
-    else if(nstack > 0) {  /* work to do on the stack? */       \
-      nstack--;                                                 \
-      il = stack[nstack].il;                                    \
-      ir = stack[nstack].ir;                                    \
+      il = isr+1;                                               \
     }                                                           \
     else  /* we are done */                                     \
       return;                                                   \
