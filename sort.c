@@ -4,12 +4,46 @@
 #include "lfa.h"
 
 #define PART(il, ir, DATATYPE) {                                \
-  /* Use middle element as pivot */                             \
+  /* Select median of first, middle and last for pivot */       \
+  vl = V(il, DATATYPE);                                         \
+  vr = V(ir, DATATYPE);                                         \
+                                                                \
   ipiv = il + (ir-il)/2;                                        \
   vpiv = V(ipiv, DATATYPE);                                     \
                                                                 \
-  /* Move pivot to end */                                       \
-  X(ipiv, ir);                                                  \
+  if(vl < vr) {                                                 \
+    if(vr < vpiv) {                                             \
+      ipiv = ir;                                                \
+      vpiv = vr;                                                \
+    }                                                           \
+    else {                                                      \
+      if(vpiv < vl) {                                           \
+        ipiv = il;                                              \
+        vpiv = vl;                                              \
+      }                                                         \
+      /* else ipiv, already set */                              \
+                                                                \
+      /* Move pivot to end */                                   \
+      X(ipiv, ir);                                              \
+    }                                                           \
+  }                                                             \
+  else {                                                        \
+    if(vpiv < vr) {                                             \
+      ipiv = ir;                                                \
+      vpiv = vr;                                                \
+    }                                                           \
+    else {                                                      \
+      if(vl < vpiv) {                                           \
+        ipiv = il;                                              \
+        vpiv = vl;                                              \
+      }                                                         \
+      /* else ipiv, already set */                              \
+                                                                \
+      /* Move pivot to end */                                   \
+      X(ipiv, ir);                                              \
+    }                                                           \
+  }                                                             \
+                                                                \
   isr = ir-1;                                                   \
                                                                 \
   /* Move everything less than pivot to start, and everything   \
@@ -43,7 +77,7 @@
 
 #define MAKE_quickselect(DATATYPE) {                                    \
   size_t il, ir, isl, isr, ipiv, nsr, i;                                \
-  DATATYPE vpiv, vcur;                                                  \
+  DATATYPE vl, vr, vpiv, vcur;                                          \
   TEMPDECL(DATATYPE);                                                   \
                                                                         \
   if(n <= 1)                                                            \
@@ -68,7 +102,7 @@
 
 #define MAKE_quicksort(FUNC, DATATYPE) {                        \
   size_t il, ir, isl, isr, nl, nr, ipiv, nsr, i;                \
-  DATATYPE vpiv, vcur;                                          \
+  DATATYPE vl, vr, vpiv, vcur;                                  \
   TEMPDECL(DATATYPE);                                           \
                                                                 \
   il = 0;                                                       \
