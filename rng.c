@@ -137,6 +137,14 @@ void rng_fetch_uniform (struct rng_state *s, double *a, int n) {
   }
 }
 
+double rng_fetch_one_uniform (struct rng_state *s) {
+  double rv;
+
+  rng_fetch_uniform(s, &rv, 1);
+
+  return(rv);
+}
+
 void rng_fetch_gauss (struct rng_state *s, double *a, int n) {
   double *p, v[2], rsq, fac;
   int i, x, g;
@@ -197,3 +205,10 @@ void rng_fetch_gauss (struct rng_state *s, double *a, int n) {
   }
 }
 
+double rng_fetch_one_gauss (struct rng_state *s) {
+  double rv;
+
+  rng_fetch_gauss(s, &rv, 1);
+
+  return(rv);
+}

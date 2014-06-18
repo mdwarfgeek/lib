@@ -696,7 +696,9 @@ void refract_vec (double *refco, unsigned char unref,
    is used where necessary so we can satisfy any size of request. */
 void rng_init (struct rng_state *s, uint32_t seed);
 void rng_fetch_uniform (struct rng_state *s, double *a, int n);
+double rng_fetch_one_uniform (struct rng_state *s);
 void rng_fetch_gauss (struct rng_state *s, double *a, int n);
+double rng_fetch_one_gauss (struct rng_state *s);
 
 /* -- skylevel.c -- */
 
