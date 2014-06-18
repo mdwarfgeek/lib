@@ -61,7 +61,7 @@ int dtai_read (struct dtai_table *tab, char *filename) {
       return(-1);
     }
     
-    tab->table[tab->ntab].mjd = lrint(jd-ZMJD);
+    tab->table[tab->ntab].mjd = rint(jd-ZMJD);
     tab->table[tab->ntab].dtai = val;
     tab->table[tab->ntab].mjdzero = mjdzero;
     tab->table[tab->ntab].scale = scale;
