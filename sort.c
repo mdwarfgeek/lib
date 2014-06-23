@@ -44,27 +44,28 @@
     }                                                           \
   }                                                             \
                                                                 \
-  isr = ir-1;                                                   \
+  nsr = 1;                                                      \
                                                                 \
   /* Move everything less than pivot to start, and everything   \
      equal to pivot to end. */                                  \
   isl = il;                                                     \
-  for(i = il; i <= isr; i++) {                                  \
+  for(i = il; i+nsr <= ir; ) {                                  \
     vcur = V(i, DATATYPE);                                      \
                                                                 \
     if(vcur < vpiv) {                                           \
       X(isl, i);                                                \
       isl++;                                                    \
+      i++;                                                      \
     }                                                           \
     else if(vcur == vpiv) {                                     \
-      X(isr, i);                                                \
-      isr--;                                                    \
+      X(ir-nsr, i);                                             \
+      nsr++;                                                    \
     }                                                           \
+    else                                                        \
+      i++;                                                      \
   }                                                             \
                                                                 \
   /* Move pivot and any equal elements to final location */     \
-  nsr = ir-isr;                                                 \
-                                                                \
   for(i = 0; i < nsr; i++) {                                    \
     X(isl+i, ir-i);                                             \
   }                                                             \
