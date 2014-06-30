@@ -66,6 +66,9 @@ TESTTP_OBJS=${TESTTP_SRCS:%.c=%.o}
 
 all: liblfa.a
 
+depend:
+	$(CC) -E -MM $(SRCS) > .depend
+
 extra: $(EXTRA_OBJS)
 
 liblfa.a: $(OBJS)
@@ -119,3 +122,6 @@ clean:
 	rm -f $(TESTSTUMPFF_OBJS) teststumpff
 	rm -f $(TESTTP_OBJS) testtp
 	rm -f $(EXTRA_OBJS)
+	rm -f .depend
+
+sinclude .depend
