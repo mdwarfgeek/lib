@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-//#include "lfa.h"
+#include "lfa.h"
 
 #ifdef _WIN32
 
@@ -19,9 +19,11 @@ uint64_t get_total_mem (void) {
   MEMORYSTATUSEX stat;
 
   stat.dwLength = sizeof(stat);
-  GlobalMemoryStatusEx(&stat);
 
-  return((uint64_t) stat.ullTotalPhys);
+  if(GlobalMemoryStatusEx(&stat))
+    return((uint64_t) stat.ullTotalPhys);
+  else
+    return(0);
 }
 
 #else  /* assume POSIX */
