@@ -803,6 +803,17 @@ char *sstrip (char *str);
 
 void stumpff (double s, double alpha, double sqrtalpha, double *c);
 
+/* -- sysinfo.c: System information -- */
+
+/* Returns number of CPUs available for threading, or -1 on error. */
+int get_num_cpus (void);
+
+/* Returns total system RAM in bytes, or 0 on error.  Please use this
+   routine with discretion and common sense engaged.  It's intended for
+   scaling block sizes in image processing routines that support
+   partitioning the workload, to prevent them running into swap. */
+uint64_t get_total_mem (void);
+
 /* -- wcs.c: Support for a limited subset of FITS-WCS -- */
 
 void wcs_vec2xy (struct wcs_info *wcs, double *vec, double *x, double *y);
