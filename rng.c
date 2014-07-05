@@ -212,3 +212,45 @@ double rng_fetch_one_gauss (struct rng_state *s) {
 
   return(rv);
 }
+
+/* Multivariate Gaussian deviates.  User-passed workspace can be used to
+   store Cholesky decomposition of covariance matrix if multiple sets of
+   deviates need to be generated for the same covariance. */
+
+int rng_fetch_mvgauss (struct rng_state *s,
+                       double *mean, double *cov,
+                       double *work,
+                       double *ans, int n) {
+  int i, j, rv = 0;
+  double z[n], x;
+
+  if(cov) {
+    /* Copy into workspace */
+    for(i = 0; i < n; i++)
+      for(j = 0; j <= i; j++)
+        work[i*n+j] = cov[i*n+j];
+    
+    /* Cholesky decomposition of the covariance matrix */
+    rv = cholesky(work, n);
+  }
+  /* otherwise, assume Cholesky is already done */
+
+  if(ans) {
+    /* ans = mean + work * Z where Z is a vector of Gaussian deviates */
+    
+    /* Generate Gaussian deviates */
+    rng_fetch_gauss(s, z, n);
+    
+    for(i = 0; i < n; i++) {
+      x = 0;
+
+      for(j = 0; j <= i; j++)
+        x += work[i*n+j] * z[j];
+
+      ans[i] = mean[i] + x;
+    }
+  }
+
+  return(rv);
+}
+

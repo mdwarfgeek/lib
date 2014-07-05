@@ -425,6 +425,10 @@ double v_airmass (double v[3]);
 double bary_delay (struct observer *obs, double s[3], double pr);
 double bary_doppler (struct observer *obs, double s[3]);
 
+/* -- cholesky.c: Cholesky decomposition -- */
+
+int cholesky (double *a, int n);
+
 /* -- dtai.c: TAI-UTC -- */
 
 int dtai_read (struct dtai_table *tab, char *filename);
@@ -699,6 +703,10 @@ void rng_fetch_uniform (struct rng_state *s, double *a, int n);
 double rng_fetch_one_uniform (struct rng_state *s);
 void rng_fetch_gauss (struct rng_state *s, double *a, int n);
 double rng_fetch_one_gauss (struct rng_state *s);
+int rng_fetch_mvgauss (struct rng_state *s,
+                       double *mean, double *cov,
+                       double *work,
+                       double *ans, int n);
 
 /* -- skylevel.c -- */
 
