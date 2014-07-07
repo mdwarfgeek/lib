@@ -708,6 +708,12 @@ int rng_fetch_mvgauss (struct rng_state *s,
                        double *work,
                        double *ans, int n);
 
+/* -- shuffle.c -- */
+
+void shuffle (struct rng_state *rs,
+              void *list, void *tmp,
+              size_t n, size_t s);
+
 /* -- skylevel.c -- */
 
 void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
