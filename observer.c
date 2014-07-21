@@ -18,8 +18,8 @@ void observer_init (struct observer *obs,
   obs->height = height;
 
   /* Geocentric location of observer */
-  dsincos(latitude, &sinphi, &cosphi);
-  dsincos(longitude, &sinlam, &coslam);
+  inline_sincos(latitude, sinphi, cosphi);
+  inline_sincos(longitude, sinlam, coslam);
 
   geoc(sinphi, cosphi, height, &u, &z);
 
@@ -174,7 +174,7 @@ int observer_update (struct observer *obs,
 			  1.0);
     
     /* Earth rotation matrix = R_3(era) */
-    rdsincos(obs->era, sera, cera);
+    inline_bare_sincos(obs->era, sera, cera);
 
     m_identity(obs->erm);
     euler_rotate_sc(obs->erm, 3, sera, cera);

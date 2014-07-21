@@ -9,7 +9,7 @@
 void euler_rotate (double m[3][3], int axis, double angle) {
   double s, c;
 
-  dsincos(angle, &s, &c);
+  inline_sincos(angle, s, c);
   euler_rotate_sc(m, axis, s, c);
 }
 
@@ -126,8 +126,8 @@ void ad_to_v (double a, double d, double v[3]) {
   double sa, ca, sd, cd;
 
   /* Precompute these */
-  dsincos(a, &sa, &ca);
-  dsincos(d, &sd, &cd);
+  inline_sincos(a, sa, ca);
+  inline_sincos(d, sd, cd);
 
   /* Unit vector of direction cosines */
   v[0] = ca*cd;

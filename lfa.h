@@ -9,6 +9,10 @@
 #include <float.h>
 #include <math.h>
 
+#if defined(__GLIBC__)
+#include <features.h>
+#endif
+
 /* -- Physical, Mathematical and Astronomical constants -- */
 
 /* NOTE: integer constants are expressed here without the .0, so be
@@ -350,44 +354,81 @@ struct wcs_info {
   int mpc;              /* last populated index in pc array */
 };
 
-/* -- Miscellaneous useful macros -- */
+/* -- Inline routines -- */
 
-/* rdsincos(angle, s, c)
-   Inline sine and cosine in one operation, for arguments already
-   in or reduced to appropriate range (usually using fmod).  In the
-   library, this is called with arguments in (-TWOPI,TWOPI), but on
-   x87 the allowed range for the fsincos instruction is much larger
-   than this.  The inline routine allows us to avoid extra floating
-   point load and store operations, which are not particularly quick
-   on some x87 implementations, and a branch for argument reduction.
-   It is intended for use with the GNU C compiler set to -ffast-math,
-   which should inline many math.h functions, but doesn't seem to
-   know about fsincos (even if one uses the sincos GNU extension
-   provided by glibc, at least on my system). */
+/* inline_sincos(a, s, c)
+   inline_bare_sincos(a, s, c)
+
+   Inline sine and cosine in one operation.  The second routine is for
+   arguments already in the appropriate range.  In the library, this
+   is called with arguments in (-TWOPI,TWOPI), but on x87 the allowed
+   range for the fsincos instruction is much larger than this. */
+   
+#if defined(__GNUC__) && (defined(__i386) || defined(__amd64))
+
+/* Inline x86 assembler routines, GNU C syntax */
+#define inline_sincos(a, s, c)   \
+  asm("fsincos"           "\n\t" \
+      "fnstsw  %%ax"      "\n\t" \
+      "btw     $10, %%ax" "\n\t" \
+      "jnc     1f"        "\n\t" \
+      "fldpi"             "\n\t" \
+      "fadd    %%st(0)"   "\n\t" \
+      "fxch    %%st(1)"   "\n\t" \
+"2: " "fprem1"            "\n\t" \
+      "fnstsw  %%ax"      "\n\t" \
+      "btw     $10, %%ax" "\n\t" \
+      "jc      2b"        "\n\t" \
+      "fstp    %%st(1)"   "\n\t" \
+      "fsincos"           "\n\t" \
+"1: "                            \
+      : "=t" (c), "=u" (s)       \
+      : "0" (a)                  \
+      : "ax", "cc")
+
+#define inline_bare_sincos(a, s, c) \
+  asm("fsincos" : "=t" (c), "=u" (s) : "0" (a))
+
+#elif defined(__GLIBC__) && defined(_GNU_SOURCE)
+
+/* Try to use glibc provided routines in math.h */
+#define inline_sincos(a, s, c) sincos((a), &(s), &(c))
+#define inline_bare_sincos(a, s, c) sincos((a), &(s), &(c))
+
+#else
+
+/* Generic implementation using standard math.h functions */
+#define inline_sincos(a, s, c) (s) = sin(a); (c) = cos(a)
+#define inline_bare_sincos(a, s, c) (s) = sin(a); (c) = cos(a)
+
+#endif
 
 /* ilogtwo(i, l)
    Computes l = floor(log2(i)).  The strange name is to avoid
    conflicting with various other implementations (e.g. NetBSD). */
 
 #if defined(__GNUC__) && (defined(__i386) || defined(__amd64))
-/* Inline x86 assembler routines */
-#define rdsincos(a, s, c) __asm__ ("fsincos" : "=t" (c), "=u" (s) : "0" (a))
+
+/* Inline x86 assembler routine, GNU C syntax */
 #define ilogtwo(i, l) __asm__ ("bsr %1, %0" : "=r" (l) : "mr" (i))
-#else
-#define rdsincos(a, s, c)  			\
-  (s) = sin(a);					\
-  (c) = cos(a)
-#if defined(__GNUC__) && (__GNUC__ >= 3 && __GNUC_MINOR__ >= 2 && __GNUC_PATCHLEVEL__ >= 2)
+
+#elif defined(__GNUC__) && (__GNUC__ >= 3 && __GNUC_MINOR__ >= 2 && __GNUC_PATCHLEVEL__ >= 2)
+
 /* Use GCC count leading zeros builtin */
 #define ilogtwo(i, l) (l) = 8*sizeof(i) - 1 - __builtin_clz(i)
+
 #elif FLT_RADIX == 2
+
 /* Using ilogb is probably better than a loop provided we have
    hardware floating point. */
+
 #define ilogtwo(i, l) (l) = ilogb((double) (i))
+
 #else
+
 /* Weird architecture.  Note that this depends on automatic truncation. */
 #define ilogtwo(i, l) (l) = log2((double) (i))
-#endif
+
 #endif
 
 /* Wrap angle to [0, TWOPI) */
@@ -442,10 +483,6 @@ double dtdb (double mjd,        /* TDB as MJD (but TT is adequate) */
 	     double longitude,  /* rad, East + */
 	     double u,          /* distance from Earth spin axis, m */
 	     double z);         /* distance from Earth equatorial plane, m */
-
-/* -- dsincos.c: sine and cosine in one operation -- */
-
-void dsincos (double a, double *s, double *c);
 
 /* -- fpcoord.c: focal plane coordinates -- */
 

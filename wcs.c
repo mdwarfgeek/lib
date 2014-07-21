@@ -147,7 +147,7 @@ void wcs_xy2vec (struct wcs_info *wcs, double x, double y, double *vec) {
 	tt -= dtt;
       }
 
-      dsincos(tt, &ct, &st);  
+      inline_sincos(tt, ct, st);
       ttsq = tt*tt;
 
       if(ttsq < SAFE)  /* tt/rt * series sin(tt)/tt to O(rt^4) */
@@ -156,7 +156,7 @@ void wcs_xy2vec (struct wcs_info *wcs, double x, double y, double *vec) {
 	fac = ct / rt;
     }
     else {
-      dsincos(rt, &ct, &st);  
+      inline_sincos(rt, ct, st);
       
       if(rtsq < SAFE)  /* use series for sin(rt) / rt to O(rt^4) */
 	fac = ((1.0/120.0) * rtsq - (1.0/6.0)) * rtsq + 1.0;
@@ -189,8 +189,8 @@ void wcs_ad2xy (struct wcs_info *wcs, double a, double d,
 		double *x, double *y) {
   double sina, cosa, sind, cosd, vec[3];
 
-  dsincos(a, &sina, &cosa);
-  dsincos(d, &sind, &cosd);
+  inline_sincos(a, sina, cosa);
+  inline_sincos(d, sind, cosd);
 
   vec[0] = cosa*cosd;
   vec[1] = sina*cosd;

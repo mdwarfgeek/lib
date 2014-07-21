@@ -23,8 +23,8 @@ void source_star (struct source *src,
   src->type = SOURCE_STAR;
 
   /* Precompute these */
-  dsincos(ra, &sa, &ca);
-  dsincos(de, &sd, &cd);
+  inline_sincos(ra, sa, ca);
+  inline_sincos(de, sd, cd);
 
   /* Unit vector to star at catalogue epoch */
   src->ref_n[0] = ca*cd;
@@ -201,7 +201,7 @@ void source_elem (struct source *src,
       ea = ma;
     
     for(i = 0; i < KEPLER_MAXITER; i++) {
-      rdsincos(ea, se, ce);
+      inline_bare_sincos(ea, se, ce);
 
       f = ea - ecc * se - ma;
       df = 1.0 - ecc * ce;

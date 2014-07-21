@@ -176,7 +176,7 @@ void nut00b (double t,
     for(iarg = 0; iarg < 5; iarg++)
       arg += nut_coef[ils].m[iarg] * nut_arg[iarg];
     
-    rdsincos(arg, sinarg, cosarg);
+    inline_bare_sincos(arg, sinarg, cosarg);
 
     /* Accumulate sums */
     dpsi += (nut_coef[ils].a + nut_coef[ils].ap * t) * sinarg + nut_coef[ils].app * cosarg;
@@ -256,9 +256,10 @@ void makecim (double ang[NPNANG], double sxy,
   double scio, a;
 
   /* Precompute sine and cosine of angles */
-  for(iang = 0; iang < NPNANG; iang++)
-    dsincos(ang[iang], sinang+iang, cosang+iang);
-  
+  for(iang = 0; iang < NPNANG; iang++) {
+    inline_sincos(ang[iang], sinang[iang], cosang[iang]);
+  }  
+
   /* Compute X and Y coordinates of CIP */
   acip = sinang[PNANG_EPSA]*sinang[PNANG_PSI];
   bcip = sinang[PNANG_EPSA]*cosang[PNANG_PSI]*cosang[PNANG_PHI]

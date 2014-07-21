@@ -33,7 +33,7 @@ void stumpff (double s,
     /* Use sin, cos of sqrt(x) */
     srx = sqrtalpha * fabs(s);
 
-    dsincos(srx, &ssx, &csx);
+    inline_sincos(srx, ssx, csx);
 
     c[0] = csx;
     c[1] = ssx / sqrtalpha;

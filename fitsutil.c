@@ -210,7 +210,7 @@ int read_wcs (fitsfile *fits, struct wcs_info *wcs, int verbose, char *errstr) {
     }
     else {
       /* Apply rotation matrix with angle rho (in degrees!) */
-      dsincos(rho*DEG_TO_RAD, &sinrho, &cosrho);
+      inline_sincos(rho*DEG_TO_RAD, sinrho, cosrho);
 
       atmp = wcs->a * cosrho - wcs->d * sinrho;
       btmp = wcs->b * cosrho - wcs->e * sinrho;
@@ -232,7 +232,7 @@ int read_wcs (fitsfile *fits, struct wcs_info *wcs, int verbose, char *errstr) {
     }
     else {
       /* Apply rotation matrix with angle rho (in degrees!) */
-      dsincos(rho*DEG_TO_RAD, &sinrho, &cosrho);
+      inline_sincos(rho*DEG_TO_RAD, sinrho, cosrho);
 
       atmp = wcs->a * cosrho + wcs->d * sinrho;
       btmp = wcs->b * cosrho + wcs->e * sinrho;
@@ -253,8 +253,8 @@ int read_wcs (fitsfile *fits, struct wcs_info *wcs, int verbose, char *errstr) {
 
   wcs->tpa *= DEG_TO_RAD;
   wcs->tpd *= DEG_TO_RAD;
-  dsincos(wcs->tpa, &(wcs->sina), &(wcs->cosa));
-  dsincos(wcs->tpd, &(wcs->sind), &(wcs->cosd));
+  inline_sincos(wcs->tpa, wcs->sina, wcs->cosa);
+  inline_sincos(wcs->tpd, wcs->sind, wcs->cosd);
 
   wcs->a *= DEG_TO_RAD;
   wcs->b *= DEG_TO_RAD;
