@@ -3,7 +3,6 @@
 #include <math.h>
 
 #include "lfa.h"
-#include "util.h"
 
 /* Compute air mass using Hardie (1962) formula */
 

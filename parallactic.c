@@ -3,8 +3,6 @@
 #include <math.h>
 
 #include "lfa.h"
-#include "cvtunit.h"
-#include "util.h"
 
 /* Vector must be in (-h, delta) system, and not adjusted for refraction. */
 

@@ -6,7 +6,6 @@
 #include <math.h>
 
 #include "lfa.h"
-#include "util.h"
 
 int iers_open (struct iers_table *tab,
 	       struct dtai_table *dtai_tab,

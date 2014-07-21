@@ -4,8 +4,6 @@
 #include <float.h>
 
 #include "lfa.h"
-#include "cvtunit.h"
-#include "util.h"
 
 #define MIN_SCL (FLT_RADIX*DBL_EPSILON)
 

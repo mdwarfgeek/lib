@@ -3,9 +3,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "lfa.h"
 #include "cvtunit.h"
-#include "util.h"
+#include "lfa.h"
 
 #define KEPLER_PREC    1.0e-13
 #define KEPLER_MAXITER 20

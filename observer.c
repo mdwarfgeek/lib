@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "lfa.h"
 #include "cvtunit.h"
-#include "util.h"
+#include "lfa.h"
 
 void observer_init (struct observer *obs,
 		    double longitude,  /* WGS84 longitude, E positive */

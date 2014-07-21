@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "lfa.h"
 #include "cvtunit.h"
-#include "util.h"
+#include "lfa.h"
 
 /* Precomputed GCRS to ecliptic of J2000 */
 double gcrs2ecl[3][3] = {

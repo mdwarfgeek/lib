@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "lfa.h"
 #include "cvtunit.h"
-#include "util.h"
+#include "lfa.h"
 
 struct dtdb_coef {
   double c;

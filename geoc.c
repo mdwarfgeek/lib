@@ -3,7 +3,6 @@
 #include <math.h>
 
 #include "lfa.h"
-#include "util.h"
 
 /* Geodetic coordinates to geocentric, WGS84.
    The result of this routine can be converted to a 3-vector as follows:

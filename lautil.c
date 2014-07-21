@@ -8,8 +8,6 @@
 #include "lfa.h"
 #include "lautil.h"
 
-#include "util.h"
-
 /* Prototypes for LAPACK Fortran routines */
 void dgelss_ (int *, int *, int *,
               double *, int *, double *, int *, double *, double *, int *,

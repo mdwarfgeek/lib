@@ -5,9 +5,6 @@
 
 #include "lfa.h"
 
-#include "cvtunit.h"
-#include "util.h"
-
 #define TINY (FLT_RADIX*DBL_EPSILON)
 #define SAFE 1.0e-10
 

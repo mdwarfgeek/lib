@@ -3,8 +3,6 @@
 #include <math.h>
 
 #include "lfa.h"
-#include "cvtunit.h"
-#include "util.h"
 
 /* Barycentering routines dealing with time and radial velocity.
    Follows the IAU 2000 resolutions, as described and elaborated

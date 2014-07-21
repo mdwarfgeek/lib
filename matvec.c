@@ -3,8 +3,6 @@
 #include <math.h>
 
 #include "lfa.h"
-#include "cvtunit.h"
-#include "util.h"
 
 void euler_rotate (double m[3][3], int axis, double angle) {
   double s, c;

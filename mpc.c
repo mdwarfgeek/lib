@@ -7,7 +7,6 @@
 
 #include "cvtunit.h"
 #include "lfa.h"
-#include "util.h"
 
 int mpc_read (char *filename, struct source **srclist, int *nsrc) {
   FILE *fp;

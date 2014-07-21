@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "lfa.h"
 #include "cvtunit.h"
-#include "util.h"
+#include "lfa.h"
 
 #define TROPO_HEIGHT  11000  /* m */
 #define TLR          0.0065  /* K/m */
