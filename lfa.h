@@ -476,6 +476,10 @@ void iers_close (struct iers_table *tab);
 int iers_fetch (struct iers_table *tab, double mjd,
 		double *dut1, double *xp, double *yp, double *dxnut, double *dynut);
 
+/* -- linsolve.c: Solution of linear equations -- */
+
+int linsolve (double *a, double *b, int n, double rcond);
+
 /* -- matvec.c: matrix and vector utilities */
 
 /* Makes Euler rotation matrices about "axis" */
