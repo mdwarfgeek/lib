@@ -99,15 +99,76 @@
   }                                                                     \
 }
 
+/* Multiple QuickSelect */
+
+#define MAKE_multquickselect(FUNC, DATATYPE) {                          \
+  size_t isl, isr, ipiv, nsr, i;                                        \
+  size_t itl, itr, nl, nr;                                              \
+  DATATYPE vl, vr, vpiv, vcur;                                          \
+  TEMPDECL(DATATYPE);                                                   \
+                                                                        \
+  if(il >= ir) {                                                        \
+    for(itr = iol; itr <= ior; itr++)                                   \
+      result[itr] = R(il);                                              \
+                                                                        \
+    return;                                                             \
+  }                                                                     \
+                                                                        \
+  for(;;) {                                                             \
+    PART(il, ir, DATATYPE);                                             \
+                                                                        \
+    if(ind[ior] < isl)                                                  \
+      ir = isl-1;                                                       \
+    else if(ind[iol] > isr)                                             \
+      il = isr+1;                                                       \
+    else {  /* pivot somewhere in the range of desired indices */       \
+      for(itl = iol; itl <= ior; itl++)                                 \
+        if(ind[itl] >= isl)                                             \
+          break;                                                        \
+                                                                        \
+      for(itr = itl; itr <= ior && ind[itr] <= isr; itr++)              \
+        result[itr] = R(isl);                                           \
+                                                                        \
+      if(il < isl && iol < itl) {  /* work to do on the left? */        \
+        /* work to do on the right? */                                  \
+        if(ir > isr && ior >= itr) {                                    \
+          nl = itl-iol;                                                 \
+          nr = ior-itr+1;                                               \
+                                                                        \
+          /* Recurse into the smaller side first */                     \
+          if(nl > nr) {                                                 \
+            FUNC(list, isr+1, ir, ind, itr, ior, result);               \
+            ir = isl-1;                                                 \
+            ior = itl-1;                                                \
+          }                                                             \
+          else {                                                        \
+            FUNC(list, il, isl-1, ind, iol, itl-1, result);             \
+            il = isr+1;                                                 \
+            iol = itr;                                                  \
+          }                                                             \
+        }                                                               \
+        else {                                                          \
+          ir = isl-1;                                                   \
+          ior = itl-1;                                                  \
+        }                                                               \
+      }                                                                 \
+      else if(ir > isr && ior >= itr) {  /* work to do on the right? */ \
+        /* Do the right */                                              \
+        il = isr+1;                                                     \
+        iol = itr;                                                      \
+      }                                                                 \
+      else  /* we are done */                                           \
+        return;                                                         \
+    }                                                                   \
+  }                                                                     \
+}
+
 /* QuickSort */
 
 #define MAKE_quicksort(FUNC, DATATYPE) {                        \
-  size_t il, ir, isl, isr, nl, nr, ipiv, nsr, i;                \
+  size_t isl, isr, nl, nr, ipiv, nsr, i;                        \
   DATATYPE vl, vr, vpiv, vcur;                                  \
   TEMPDECL(DATATYPE);                                           \
-                                                                \
-  il = 0;                                                       \
-  ir = n-1;                                                     \
                                                                 \
   while(il < ir) {                                              \
     PART(il, ir, DATATYPE);                                     \
@@ -120,11 +181,11 @@
                                                                 \
         /* Recurse into the smaller side first */               \
         if(nl > nr) {                                           \
-          RECURSE(FUNC, B(isr+1), nr);                          \
+          RECURSE(FUNC, isr+1, ir);                             \
           ir = isl-1;                                           \
         }                                                       \
         else {                                                  \
-          RECURSE(FUNC, B(il), nl);                             \
+          RECURSE(FUNC, il, isl);                               \
           il = isr+1;                                           \
         }                                                       \
       }                                                         \
@@ -149,7 +210,7 @@
   list[i] = list[j];                            \
   list[j] = tmp;
 #define TEMPDECL(t) t tmp
-#define RECURSE(f, p, n) f(p, n)
+#define RECURSE(f, il, ir) f(list, il, ir)
 
 double dquickselect (double *list, size_t k, size_t n)
   MAKE_quickselect(double)
@@ -160,14 +221,59 @@ float fquickselect (float *list, size_t k, size_t n)
 int iquickselect (int *list, size_t k, size_t n)
   MAKE_quickselect(int)
 
-void dquicksort (double *list, size_t n)
-  MAKE_quicksort(dquicksort, double);
+static void dmultquickselect_int (double *list, size_t il, size_t ir,
+                                  size_t *ind, size_t iol, size_t ior,
+                                  double *result)
+  MAKE_multquickselect(dmultquickselect_int, double)
 
-void fquicksort (float *list, size_t n)
-  MAKE_quicksort(fquicksort, float);
+void dmultquickselect (double *list, size_t n,
+                       size_t *ind, size_t no,
+                       double *result) {
+  dmultquickselect_int(list, 0, n-1, ind, 0, no-1, result);
+}
 
-void iquicksort (int *list, size_t n)
-  MAKE_quicksort(iquicksort, int);
+static void fmultquickselect_int (float *list, size_t il, size_t ir,
+                                  size_t *ind, size_t iol, size_t ior,
+                                  float *result)
+  MAKE_multquickselect(fmultquickselect_int, float)
+
+void fmultquickselect (float *list, size_t n,
+                       size_t *ind, size_t no,
+                       float *result) {
+  fmultquickselect_int(list, 0, n-1, ind, 0, no-1, result);
+}
+
+static void imultquickselect_int (int *list, size_t il, size_t ir,
+                                  size_t *ind, size_t iol, size_t ior,
+                                  int *result)
+  MAKE_multquickselect(imultquickselect_int, int)
+
+void imultquickselect (int *list, size_t n,
+                       size_t *ind, size_t no,
+                       int *result) {
+  imultquickselect_int(list, 0, n-1, ind, 0, no-1, result);
+}
+
+static void dquicksort_int (double *list, size_t il, size_t ir)
+  MAKE_quicksort(dquicksort_int, double);
+
+void dquicksort (double *list, size_t n) {
+  dquicksort_int(list, 0, n-1);
+}
+
+static void fquicksort_int (float *list, size_t il, size_t ir)
+  MAKE_quicksort(fquicksort_int, float);
+
+void fquicksort (float *list, size_t n) {
+  fquicksort_int(list, 0, n-1);
+}
+
+static void iquicksort_int (int *list, size_t il, size_t ir)
+  MAKE_quicksort(iquicksort_int, int);
+
+void iquicksort (int *list, size_t n) {
+  iquicksort_int(list, 0, n-1);
+}
 
 #undef B
 #undef V
@@ -186,31 +292,34 @@ void iquicksort (int *list, size_t n)
   memcpy(B(i), B(j), s);                        \
   memcpy(B(j), tmp, s)
 #define TEMPDECL(t) 
-#define RECURSE(f, p, n) f(p, tmp, n, s, o)
+#define RECURSE(f, il, ir) f(list, tmp, il, ir, s, o)
 
-void *dquickselect_gen (void *list, void *tmp,
-                        size_t k, size_t n, size_t s, size_t o)
-  MAKE_quickselect(double)
-
-void *fquickselect_gen (void *list, void *tmp,
-                          size_t k, size_t n, size_t s, size_t o)
-  MAKE_quickselect(float)
-
-void *iquickselect_gen (void *list, void *tmp,
-                        size_t k, size_t n, size_t s, size_t o)
-  MAKE_quickselect(int)
+static void dquicksort_gen_int (void *list, void *tmp,
+                                size_t il, size_t ir, size_t s, size_t o)
+  MAKE_quicksort(dquicksort_gen_int, double);
 
 void dquicksort_gen (void *list, void *tmp,
-                     size_t n, size_t s, size_t o)
-  MAKE_quicksort(dquicksort_gen, double);
+                     size_t n, size_t s, size_t o) {
+  dquicksort_gen_int(list, tmp, 0, n-1, s, o);
+}
+
+static void fquicksort_gen_int (void *list, void *tmp,
+                                size_t il, size_t ir, size_t s, size_t o)
+  MAKE_quicksort(fquicksort_gen_int, float);
 
 void fquicksort_gen (void *list, void *tmp,
-                     size_t n, size_t s, size_t o)
-  MAKE_quicksort(fquicksort_gen, float);
+                     size_t n, size_t s, size_t o) {
+  fquicksort_gen_int(list, tmp, 0, n-1, s, o);
+}
+
+static void iquicksort_gen_int (void *list, void *tmp,
+                                size_t il, size_t ir, size_t s, size_t o)
+  MAKE_quicksort(iquicksort_gen_int, int);
 
 void iquicksort_gen (void *list, void *tmp,
-                     size_t n, size_t s, size_t o)
-  MAKE_quicksort(iquicksort_gen, int);
+                     size_t n, size_t s, size_t o) {
+  iquicksort_gen_int(list, tmp, 0, n-1, s, o);
+}
 
 /* My usual "medsig" routine using median and MAD scaled to Gaussian
    RMS equivalent.  Lives here because I couldn't think of a better
