@@ -250,6 +250,11 @@ struct observer {
   double goa[3];           /* GCRS geocentric acceleration vector, AU/d/d */
 
   /* Solar-system ephemerides */
+  double jbep[3];          /* original values and timestamp from JPLEPH */
+  double jemp[3];          /* used to update estimates below */
+  double jbsp[3];
+  double jtdb;
+
   double bep[3];           /* SSB to Earth, AU */
   double bev[3];           /* Earth velocity relative to SSB, AU/d */
   double hep[3];           /* Heliocentre to Earth, AU */

@@ -75,6 +75,7 @@ void observer_geoc (struct observer *obs) {
   obs->yp = 0;
 
   obs->dtdb = 0;
+  obs->jtdb = 0;
 }
 
 int observer_update (struct observer *obs,
@@ -92,6 +93,8 @@ int observer_update (struct observer *obs,
 
   double tei, dteidt, tev[3], dtevdt[3];
   double tmp_bep[3], tmp_bev[3], tmp_emp[3], tmp_emv[3];
+
+  double jdelt;
 
   /* Time arguments: TT Julian days and centuries since 2000.0 */
   tt = utc + ttmutc / DAY;
@@ -249,31 +252,40 @@ int observer_update (struct observer *obs,
     /* Components of Earth position and velocity relative to SSB and
        heliocentre from ephemerides.  TT is used as an approximation
        to TDB if dtdb is not available. */
-    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_EMB, obs->bep, obs->bev);
+    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_EMB, obs->jbep, obs->bev);
     if(rv < 0)
       return(rv);
     
-    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_MOON, obs->emp, obs->emv);
+    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_MOON, obs->jemp, obs->emv);
     if(rv < 0)
       return(rv);
     
-    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_SUN, obs->bsp, obs->bsv);
+    rv = jpleph_fetch(jpltab, obs->tdb, JPLEPH_SUN, obs->jbsp, obs->bsv);
     if(rv < 0)
       return(rv);
     
     for(i = 0; i < 3; i++) {
       /* SSB->Earth = SSB->EMB - Earth->EMB */
-      obs->bep[i] -= jpltab->emfac * obs->emp[i];
+      obs->jbep[i] -= jpltab->emfac * obs->jemp[i];
       obs->bev[i] -= jpltab->emfac * obs->emv[i];
-      
+    }
+
+    obs->jtdb = obs->tdb;
+  }
+  
+  if(mask & OBSERVER_UPDATE_ERA || mask & OBSERVER_UPDATE_SOLSYS) {
+    jdelt = obs->tdb - obs->jtdb;
+
+    for(i = 0; i < 3; i++) {
+      /* Update vectors from JPL */
+      obs->bep[i] = obs->jbep[i] + obs->bev[i] * jdelt;
+      obs->emp[i] = obs->jemp[i] + obs->emv[i] * jdelt;
+      obs->bsp[i] = obs->jbsp[i] + obs->bsv[i] * jdelt;
+
       /* Sun->Earth = SSB->Earth - SSB->Sun */
       obs->hep[i] = obs->bep[i] - obs->bsp[i];
       obs->hev[i] = obs->bev[i] - obs->bsv[i];
-    }
-  }
 
-  if(mask & OBSERVER_UPDATE_ERA || mask & OBSERVER_UPDATE_SOLSYS) {
-    for(i = 0; i < 3; i++) {
       /* Barycentric and heliocentric position vectors of observer */
       obs->bop[i] = obs->bep[i] + obs->gop[i];
       obs->hop[i] = obs->hep[i] + obs->gop[i];
