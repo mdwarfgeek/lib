@@ -83,6 +83,7 @@ void report_syserr (char *errstr, const char *fmt, ...) {
 }
 
 int daemonify (void) {
+#ifndef _WIN32
   int rv, pid, fd;
   struct sigaction sa, osa;
 
@@ -133,6 +134,7 @@ int daemonify (void) {
     if(rv < 0)
       return(rv);
   }
+#endif
 
   return(0);
 }

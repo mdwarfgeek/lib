@@ -5,6 +5,7 @@
 
 #ifdef _WIN32
 
+#define WINVER 0x0500
 #include <windows.h>
 
 int get_num_cpus (void) {

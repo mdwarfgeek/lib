@@ -6,7 +6,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <shlobj.h>
+#else
 #include <pwd.h>
+#endif
 
 #include "cnf.h"
 #include "lfa.h"
@@ -31,7 +37,12 @@ int cnf_read (char *filename,
   char *sptr;
 
   int rv;
+
+#ifdef _WIN32
+  char homedir[MAX_PATH];
+#else
   struct passwd *pw;
+#endif
 
   /* Open file */
   fp = fopen(filename, "r");
@@ -172,20 +183,32 @@ int cnf_read (char *filename,
 		/* Current user, first try $HOME */
 		dp = getenv("HOME");
 		if(!dp) {
-		  /* Nope, try password file */
+		  /* Nope, try to get from the system */
+#ifdef _WIN32
+                  if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE,
+                                               NULL, 0, homedir)))
+                    dp = homedir;
+                  else
+                    goto error;
+#else
 		  pw = getpwuid(getuid());
 		  if(!pw)
 		    goto error;
 		  else
 		    dp = pw->pw_dir;
+#endif
 		}
 	      }
 	      else {
+#ifdef _WIN32
+                goto error;  /* Not implemented */
+#else
 		pw = getpwnam(ep);
 		if(!pw)
 		  goto error;
 		else
 		  dp = pw->pw_dir;
+#endif
 	      }
 
 	      if(sp) {
