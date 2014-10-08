@@ -17,7 +17,7 @@ OPT=-g -O3 -ffast-math
 CFLAGS=-std=gnu99 -Wall -Wno-strict-aliasing $(OPT) -fPIC -I$(HOME)/include
 
 # Extra flags for CFITSIO
-CFITSIO_CFLAGS=-I/usr/local/include
+CFITSIO_INC?=-I/usr/local/include
 
 ### End constants section ###
 
@@ -77,7 +77,7 @@ liblfa.a: $(OBJS)
 	ranlib $@
 
 fitsutil.o: fitsutil.c
-	$(CC) $(CFLAGS) $(CFITSIO_CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) $(CFITSIO_INC) -o $@ -c $<
 
 testdsincos: $(TESTDSINCOS_OBJS) liblfa.a
 	$(CC) -o testdsincos $(TESTDSINCOS_OBJS) liblfa.a -lm
