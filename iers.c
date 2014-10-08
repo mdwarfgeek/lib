@@ -25,8 +25,11 @@ int iers_open (struct iers_table *tab,
     filename = fnbuf;
   }
 
-  /* Open file */
-  tab->fp = fopen(filename, "r");
+  /* Open file.  Note that on Windows we have to do this in binary
+     mode to disable CRLF translation.  Otherwise, the CR is stripped
+     off and defeats our efforts to determine (and check) the record
+     length.  The extra CRs are not a problem. */
+  tab->fp = fopen(filename, "rb");
   if(!(tab->fp)) {
     return(-1);
   }  
