@@ -1,5 +1,103 @@
 /* tcutil.c:  Wrapper to hide all the termcap vilesomeness */
 
+#ifdef _WIN32
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <windows.h>
+
+#include "tcutil.h"
+
+HANDLE h_stdout;
+
+int tcutil_init (void) {
+  CONSOLE_SCREEN_BUFFER_INFO inf;
+
+  /* Ensure stdio buffers are flushed */
+  fflush(stdout);
+
+  /* Get handle */
+  h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+  if(h_stdout == INVALID_HANDLE_VALUE)
+    return(0);
+
+  /* Get info */
+  if(!GetConsoleScreenBufferInfo(h_stdout, &inf))
+    return(0);
+  
+  /* Turn off buffering in stdio */
+  setvbuf(stdout, (char *) NULL, _IONBF, 0);
+
+  return(1);
+}
+
+void tcutil_winsize (int *ncols, int *nrows) {
+  CONSOLE_SCREEN_BUFFER_INFO inf;
+
+  if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
+    *ncols = inf.dwSize.X;
+    *nrows = inf.dwSize.Y;
+  }
+  else {
+    *ncols = 0;
+    *nrows = 0;
+  }
+}
+
+void tcutil_back (void) {
+  CONSOLE_SCREEN_BUFFER_INFO inf;
+
+  if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
+    if(inf.dwCursorPosition.X > 0) {
+      inf.dwCursorPosition.X--;
+      SetConsoleCursorPosition(h_stdout, inf.dwCursorPosition);
+    }
+  }
+}
+
+void tcutil_up (void) {
+  CONSOLE_SCREEN_BUFFER_INFO inf;
+
+  if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
+    if(inf.dwCursorPosition.Y > 0) {
+      inf.dwCursorPosition.Y--;
+      SetConsoleCursorPosition(h_stdout, inf.dwCursorPosition);
+    }
+  }
+}
+
+#define FG_GREY (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
+#define BG_GREY (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE)
+
+void tcutil_attr (int a) {
+  CONSOLE_SCREEN_BUFFER_INFO inf;
+
+  if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
+    switch(a) {
+      /* These are mutually exclusive, so we just set it */
+    case ATTR_NORM:
+    case ATTR_BLINK:
+    case ATTR_HALF:
+      inf.wAttributes = FG_GREY;
+      break;
+    case ATTR_BOLD:
+      inf.wAttributes = FG_GREY | FOREGROUND_INTENSITY;
+      break;
+    case ATTR_REVERSE:
+    case ATTR_STANDOUT:  /* XXX - this is not really what ANSI does */
+      inf.wAttributes = BG_GREY;
+      break;
+    case ATTR_UNDERLINE:
+      break;
+    }
+
+    SetConsoleTextAttribute(h_stdout, inf.wAttributes);
+  }
+}
+
+#else
+
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -125,3 +223,4 @@ void tcutil_attr (int a) {
     tputs(attr[a], 1, putchar);
 }
 
+#endif  /* _WIN32 */

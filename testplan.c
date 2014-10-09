@@ -1,5 +1,9 @@
 #include <sys/types.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/select.h>
+#endif
 #include <sys/time.h>
 #include <unistd.h>
 #include <errno.h>
@@ -21,7 +25,10 @@ int main (int argc, char *argv[]) {
   struct source src;
   struct observer obs;
 
-  struct timeval tv, tvslow, tvdiff, tsl;
+  struct timeval tv, tvslow, tvdiff;
+#ifndef _WIN32
+  struct timeval tsl;
+#endif
   int utcdn;
   double utcdf;
 
@@ -116,7 +123,12 @@ int main (int argc, char *argv[]) {
     dtt = dtai(&dtab, utcdn, utcdf) + DTT;
 
     /* How long since last update? */
-    timersub(&tv, &tvslow, &tvdiff);
+    tvdiff.tv_sec = tv.tv_sec - tvslow.tv_sec;
+    tvdiff.tv_usec = tv.tv_usec - tvslow.tv_usec;
+    if(tvdiff.tv_usec < 0) {
+      tvdiff.tv_sec--;
+      tvdiff.tv_usec += 1000000;
+    }
 
     /* Update */
     if(!running || tvdiff.tv_sec >= 10) {
@@ -192,12 +204,16 @@ int main (int argc, char *argv[]) {
 	     1.0/pr, el*RAD_TO_DEG);
     }
 
+#ifdef _WIN32
+    Sleep(100);
+#else
     tsl.tv_sec = 0;
     tsl.tv_usec = 100000;
 
     rv = select(0, (fd_set *) NULL, (fd_set *) NULL, (fd_set *) NULL, &tsl);
     if(rv < 0)
       error(1, "select");
+#endif
 
     running = 1;
   }
