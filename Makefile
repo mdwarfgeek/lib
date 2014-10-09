@@ -19,6 +19,9 @@ CFLAGS=-std=gnu99 -Wall -Wno-strict-aliasing $(OPT) -fPIC -I$(HOME)/include
 # Extra flags for CFITSIO
 CFITSIO_INC?=-I/usr/local/include
 
+# Termcap libraries.  Set blank on Win32.
+TERMCAP_LIBS?=-lncurses
+
 ### End constants section ###
 
 SRCS=airmass.c bary.c cholesky.c cnf.c cvtunit.c dtai.c dtdb.c fpcoord.c geoc.c iers.c jpleph.c linsolve.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c refract.c rng.c shuffle.c skylevel.c sort.c source.c strutil.c stumpff.c sysinfo.c util.c wcs.c
@@ -27,35 +30,14 @@ OBJS=${SRCS:%.c=%.o}
 EXTRA_SRCS=fitsutil.c lautil.c tcutil.c
 EXTRA_OBJS=${EXTRA_SRCS:%.c=%.o}
 
-TESTDSINCOS_SRCS=testdsincos.c
-TESTDSINCOS_OBJS=${TESTDSINCOS_SRCS:%.c=%.o}
-
 TESTMPC_SRCS=testmpc.c tcutil.c
 TESTMPC_OBJS=${TESTMPC_SRCS:%.c=%.o}
-
-TESTJPL_SRCS=testjpl.c
-TESTJPL_OBJS=${TESTJPL_SRCS:%.c=%.o}
-
-TESTOBS_SRCS=testobs.c
-TESTOBS_OBJS=${TESTOBS_SRCS:%.c=%.o}
 
 TESTPLAN_SRCS=testplan.c tcutil.c
 TESTPLAN_OBJS=${TESTPLAN_SRCS:%.c=%.o}
 
-TESTREFRO_SRCS=testrefro.c
-TESTREFRO_OBJS=${TESTREFRO_SRCS:%.c=%.o}
-
 TESTSIMPLE_SRCS=testsimple.c
 TESTSIMPLE_OBJS=${TESTSIMPLE_SRCS:%.c=%.o}
-
-TESTSTUMPFF_SRCS=teststumpff.c
-TESTSTUMPFF_OBJS=${TESTSTUMPFF_SRCS:%.c=%.o}
-
-TESTSUN_SRCS=testsun.c
-TESTSUN_OBJS=${TESTSUN_SRCS:%.c=%.o}
-
-TESTTP_SRCS=testtp.c
-TESTTP_OBJS=${TESTTP_SRCS:%.c=%.o}
 
 # Rules for building
 
@@ -79,48 +61,20 @@ liblfa.a: $(OBJS)
 fitsutil.o: fitsutil.c
 	$(CC) $(CFLAGS) $(CFITSIO_INC) -o $@ -c $<
 
-testdsincos: $(TESTDSINCOS_OBJS) liblfa.a
-	$(CC) -o testdsincos $(TESTDSINCOS_OBJS) liblfa.a -lm
-
 testmpc: $(TESTMPC_OBJS) liblfa.a
-	$(CC) -o testmpc $(TESTMPC_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lncurses -lm
-
-testjpl: $(TESTJPL_OBJS) liblfa.a
-	$(CC) -o testjpl $(TESTJPL_OBJS) -L$(HOME)/lib64 liblfa.a -lsofa_c -lm
-
-testobs: $(TESTOBS_OBJS) liblfa.a
-	$(CC) -o testobs $(TESTOBS_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
+	$(CC) -o testmpc $(TESTMPC_OBJS) liblfa.a $(TERMCAP_LIBS) -lm
 
 testplan: $(TESTPLAN_OBJS) liblfa.a
-	$(CC) -o testplan $(TESTPLAN_OBJS) liblfa.a -lncurses -lm
-
-testrefro: $(TESTREFRO_OBJS) liblfa.a
-	$(CC) -o testrefro $(TESTREFRO_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
+	$(CC) -o testplan $(TESTPLAN_OBJS) liblfa.a $(TERMCAP_LIBS) -lm
 
 testsimple: $(TESTSIMPLE_OBJS) liblfa.a
 	$(CC) -o testsimple $(TESTSIMPLE_OBJS) liblfa.a -lm
 
-teststumpff: $(TESTSTUMPFF_OBJS) liblfa.a
-	$(CC) -o teststumpff $(TESTSTUMPFF_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
-
-testsun: $(TESTSUN_OBJS) liblfa.a
-	$(CC) -o testsun $(TESTSUN_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
-
-testtp: $(TESTTP_OBJS) liblfa.a
-	$(CC) -o testtp $(TESTTP_OBJS) -L$(HOME)/lib64 liblfa.a -lsla -lm
-
 clean:
 	rm -f $(OBJS) liblfa.a
-	rm -f $(TESTDSINCOS_OBJS) testdsincos
 	rm -f $(TESTMPC_OBJS) testmpc
-	rm -f $(TESTJPL_OBJS) testjpl
-	rm -f $(TESTOBS_OBJS) testobs
 	rm -f $(TESTPLAN_OBJS) testplan
-	rm -f $(TESTREFRO_OBJS) testrefro
 	rm -f $(TESTSIMPLE_OBJS) testsimple
-	rm -f $(TESTSUN_OBJS) testsun
-	rm -f $(TESTSTUMPFF_OBJS) teststumpff
-	rm -f $(TESTTP_OBJS) testtp
 	rm -f $(EXTRA_OBJS)
 	rm -f .depend
 
