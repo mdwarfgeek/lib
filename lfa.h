@@ -475,6 +475,18 @@ double bary_doppler (struct observer *obs, double s[3]);
 
 int cholesky (double *a, int n);
 
+/* -- dplate.c: Linear transformation between 2-D coordinate systems */
+
+int dplate (void *comxptr, size_t comxoff, size_t comxsz,
+            void *comyptr, size_t comyoff, size_t comysz,
+            void *refxptr, size_t refxoff, size_t refxsz,
+            void *refyptr, size_t refyoff, size_t refysz,
+            void *wtptr, size_t wtoff, size_t wtsz,
+            int npt, int ncoeff, double *tr);
+
+#define dplate_tr_x(x, y, tr) ((tr)[0]*(x) + (tr)[1]*(y) + (tr)[2])
+#define dplate_tr_y(x, y, tr) ((tr)[3]*(y) + (tr)[4]*(x) + (tr)[5])
+
 /* -- dtai.c: TAI-UTC -- */
 
 int dtai_read (struct dtai_table *tab, char *filename);
