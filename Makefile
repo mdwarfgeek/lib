@@ -49,7 +49,7 @@ TESTSIMPLE_OBJS=${TESTSIMPLE_SRCS:%.c=%.o}
 all: liblfa.a
 
 depend:
-	$(CC) -E -MM $(SRCS) > .depend
+	$(CC) $(CFLAGS) -E -MM $(SRCS) > .depend
 
 extra: $(EXTRA_OBJS)
 
