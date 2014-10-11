@@ -52,11 +52,15 @@ static size_t swap_fread (void *ptr, size_t size, size_t nmemb, FILE *fp) {
 int jpleph_open (struct jpleph_table *p, int type, char *filename) {
   char title[252];
   char *namebuf = (char *) NULL, *np;
-  int32_t binvers, ncname, icon, ncon;
+  int32_t ncname, icon, ncon;
   int32_t ilc = -1;
   int32_t b, recend;
 
-  uint32_t one = 1;
+  union {
+    int32_t l;
+    uint16_t w[2];
+  } binvers, tstbuf;
+
   uint8_t mach_le, file_le;
 
 #ifdef DEBUG
@@ -64,7 +68,9 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
 #endif
 
   /* Detect machine byte order */
-  if(*((uint16_t *) &one))
+  tstbuf.l = 1;
+
+  if(tstbuf.w[0])
     mach_le = 1;  /* little-endian */
   else
     mach_le = 0;
@@ -87,7 +93,7 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
 
   /* Read header */
   if(type == 1) {  /* Ephcom / TE405 format */
-    fread(&binvers, sizeof(binvers), 1, p->fp);
+    fread(&(binvers.l), sizeof(binvers.l), 1, p->fp);
 
     if(ferror(p->fp)) {
       fclose(p->fp);
@@ -100,13 +106,13 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     }
 
     /* Detect file byte order - binvers should be a small number */
-    if(*((uint16_t *) &binvers))
+    if(binvers.w[0])
       file_le = 1;  /* little-endian */
     else
       file_le = 0;
 
     if(mach_le != file_le) {
-      BSWAP32(&binvers);
+      BSWAP32(&(binvers.l));
       p->read = swap_fread;
     }
     else
@@ -132,7 +138,7 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     }
 
     /* Make sure we know this version */
-    if(binvers != 1) {
+    if(binvers.l != 1) {
       fclose(p->fp);
       return(-3);  /* file damaged */
     }
@@ -234,7 +240,9 @@ int jpleph_open (struct jpleph_table *p, int type, char *filename) {
     }
 
     /* Detect file byte order - denum should be a small number */
-    if(*((uint16_t *) &(p->denum)))
+    memcpy(&(tstbuf.l), &(p->denum), sizeof(tstbuf.l));
+
+    if(tstbuf.w[0])
       file_le = 1;  /* little-endian */
     else
       file_le = 0;

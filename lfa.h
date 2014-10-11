@@ -324,8 +324,13 @@ struct rng_state {
 #define RNG_NQ (RNG_NR*2)
 #define RNG_NL (RNG_NR*4)
 
-  uint64_t a[RNG_NQ];
-  uint64_t *p;
+  union {
+    uint64_t i[RNG_NQ];
+    double   d[RNG_NQ];
+  } a;
+
+  uint64_t *ip;
+  double *dp;
   int r;
 
   double gauss;

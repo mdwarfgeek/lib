@@ -24,10 +24,13 @@ void rng_init (struct rng_state *s, uint32_t vl) {
   int i, il;
 
 #ifndef __STDC_IEC_559__
-  double d = 1.0;
+  union {
+    double   d;
+    uint64_t q;
+  } dtst = { 1.0 };
 #endif
 
-  p = &(s->a[0]);
+  p = &(s->a.i[0]);
 
   *p = vl;
   vl = INIT_ITER(vl, 1);
@@ -51,7 +54,8 @@ void rng_init (struct rng_state *s, uint32_t vl) {
     *p++ |= ((uint64_t) vl) << 32;
   }
 
-  s->p = (uint64_t *) NULL;
+  s->ip = (uint64_t *) NULL;
+  s->dp = (double *) NULL;
   s->r = 0;
 
   s->gauss = 0;
@@ -67,7 +71,7 @@ void rng_init (struct rng_state *s, uint32_t vl) {
   /* Tests unity.  I'm sure this is not completely general, but it
      will spot VAX, probably the most likely of the alternative
      formats we could encounter. */
-  if(*((uint64_t *) &d) == UINT64_C(0x3ff0000000000000))
+  if(dtst.q == UINT64_C(0x3ff0000000000000))
     s->haveieee = 1;
   else
     s->haveieee = 0;
@@ -78,7 +82,7 @@ static void rng_gen (struct rng_state *s) {
   uint64_t *pq, aq, bq, ma, mb;
   int i, j, iq, jq;
 
-  pq = s->a;
+  pq = &(s->a.i[0]);
 
   aq = pq[RNG_RQ];
   bq = pq[RNG_RQ+1];
@@ -113,26 +117,27 @@ void rng_fetch_uniform (struct rng_state *s, double *a, int n) {
        work around the problem of platforms that do use IEEE
        format but do not define the preprocessor macro. */
 #ifdef __STDC_IEC_559__
-    for(; n > 0 && s->r > 0; a++, n--, s->p++, s->r--)
-      *a = *((double *) s->p) - 1.0;
+    for(; n > 0 && s->r > 0; a++, n--, s->dp++, s->ip++, s->r--)
+      *a = *(s->dp) - 1.0;
 #else
     if(s->haveieee)
-      for(; n > 0 && s->r > 0; a++, n--, s->p++, s->r--)
-        *a = *((double *) s->p) - 1.0;
+      for(; n > 0 && s->r > 0; a++, n--, s->dp++, s->ip++, s->r--)
+        *a = *(s->dp) - 1.0;
     else
       /* Inefficient, given all the effort we went to above to
          make numbers already in IEEE format, but I don't expect
          to encounter many non-IEEE machines these days.  In
          other words, this version is not intended to be used. :) */
-      for(; n > 0 && s->r > 0; a++, n--, s->p++, s->r--)
-        *a = ldexp(*(s->p) & UINT64_C(0x000fffffffffffff), -52);
+      for(; n > 0 && s->r > 0; a++, n--, s->dp++, s->ip++, s->r--)
+        *a = ldexp(*(s->ip) & UINT64_C(0x000fffffffffffff), -52);
 #endif
 
     if(n == 0)
       return;  /* we are done */
 
     rng_gen(s);
-    s->p = &(s->a[0]);
+    s->ip = &(s->a.i[0]);
+    s->dp = &(s->a.d[0]);
     s->r = RNG_RQ;
   }
 }

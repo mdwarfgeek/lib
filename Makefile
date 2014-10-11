@@ -14,7 +14,7 @@
 OPT=-g -O3 -ffast-math
 
 # Compiler flags
-CFLAGS=-std=gnu99 -Wall -Wno-strict-aliasing $(OPT) -fPIC -I$(HOME)/include
+CFLAGS=-std=gnu99 -Wall $(OPT) -fPIC -I$(HOME)/include
 
 # Extra flags for CFITSIO
 CFITSIO_INC?=-I/usr/local/include
@@ -35,6 +35,9 @@ TESTMPC_OBJS=${TESTMPC_SRCS:%.c=%.o}
 
 TESTPLAN_SRCS=testplan.c tcutil.c
 TESTPLAN_OBJS=${TESTPLAN_SRCS:%.c=%.o}
+
+TESTRNG_SRCS=testrng.c
+TESTRNG_OBJS=${TESTRNG_SRCS:%.c=%.o}
 
 TESTSIMPLE_SRCS=testsimple.c
 TESTSIMPLE_OBJS=${TESTSIMPLE_SRCS:%.c=%.o}
@@ -67,6 +70,9 @@ testmpc: $(TESTMPC_OBJS) liblfa.a
 testplan: $(TESTPLAN_OBJS) liblfa.a
 	$(CC) -o testplan $(TESTPLAN_OBJS) liblfa.a $(TERMCAP_LIBS) -lm
 
+testrng: $(TESTRNG_OBJS) liblfa.a
+	$(CC) -o testrng $(TESTRNG_OBJS) liblfa.a -lm
+
 testsimple: $(TESTSIMPLE_OBJS) liblfa.a
 	$(CC) -o testsimple $(TESTSIMPLE_OBJS) liblfa.a -lm
 
@@ -74,6 +80,7 @@ clean:
 	rm -f $(OBJS) liblfa.a
 	rm -f $(TESTMPC_OBJS) testmpc
 	rm -f $(TESTPLAN_OBJS) testplan
+	rm -f $(TESTRNG_OBJS) testrng
 	rm -f $(TESTSIMPLE_OBJS) testsimple
 	rm -f $(EXTRA_OBJS)
 	rm -f .depend
