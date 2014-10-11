@@ -3,8 +3,9 @@
 
 int tcutil_init (void);
 void tcutil_winsize (int *ncols, int *nrows);
-void tcutil_back (void);
-void tcutil_up (void);
+void tcutil_goto (int x, int y);
+void tcutil_back (int n);
+void tcutil_up (int n);
 
 /* Simplified attribute interface */
 enum {

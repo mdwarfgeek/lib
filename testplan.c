@@ -153,8 +153,7 @@ int main (int argc, char *argv[]) {
     base10_to_60(a, UNIT_RAD, dstr, sizeof(dstr), " ", "", 1, UNIT_HR);
 
     if(doclr && running)
-      for(i = -1; i <= JPLEPH_SUN; i++)
-	tcutil_up();
+      tcutil_up(JPLEPH_SUN+2);
 
     printf("Planet report for UTC %s LSA %s\n", astr, dstr);
 

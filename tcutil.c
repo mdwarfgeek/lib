@@ -45,23 +45,40 @@ void tcutil_winsize (int *ncols, int *nrows) {
   }
 }
 
-void tcutil_back (void) {
+void tcutil_goto (int x, int y) {
+  COORD cp;
+
+  cp.X = x;
+  cp.Y = y;
+
+  SetConsoleCursorPosition(h_stdout, cp);
+}
+
+void tcutil_back (int n) {
   CONSOLE_SCREEN_BUFFER_INFO inf;
 
   if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
     if(inf.dwCursorPosition.X > 0) {
-      inf.dwCursorPosition.X--;
+      if(inf.dwCursorPosition.X > n)
+        inf.dwCursorPosition.X -= n;
+      else
+        inf.dwCursorPosition.X = 0;
+
       SetConsoleCursorPosition(h_stdout, inf.dwCursorPosition);
     }
   }
 }
 
-void tcutil_up (void) {
+void tcutil_up (int n) {
   CONSOLE_SCREEN_BUFFER_INFO inf;
 
   if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
     if(inf.dwCursorPosition.Y > 0) {
-      inf.dwCursorPosition.Y--;
+      if(inf.dwCursorPosition.Y > n)
+        inf.dwCursorPosition.Y -= n;
+      else
+        inf.dwCursorPosition.Y = 0;
+
       SetConsoleCursorPosition(h_stdout, inf.dwCursorPosition);
     }
   }
@@ -115,6 +132,17 @@ extern char *BC;
 extern char *UP;
 extern short ospeed;
 
+#define OP_BC    0
+#define OP_UP    1
+#define OP_BCN   2
+#define OP_UPN   3
+#define OP_CM    4
+#define NUM_OPS  5
+
+static char *ops_tc[NUM_OPS] = { "bc", "up", "BC", "UP", "cm" };
+static char *ops[NUM_OPS];
+static unsigned char can_bs;
+
 static char *attr_tc[NUM_ATTR] = { "me", "mb", "md", "mh", "mr", "so", "us" };
 static char *attr[NUM_ATTR];
 
@@ -149,24 +177,22 @@ int tcutil_init (void) {
   else
     PC = 0;
 
-  /* Look up backspace */
-  p = tgetstr("bc", &bp);
-  if(p)
-    BC = p;
-  else {
-    /* Check for backspace capability */
-    if(tgetflag("bs"))
-      BC = (char *) NULL;
-    else  /* not enough cursor motion capability */
-      return(0);
-  }
+  /* Can the terminal backspace?  We may need this. */
+  can_bs = tgetflag("bs");
 
-  /* Look up "move up a line" */
-  p = tgetstr("up", &bp);
-  if(p)
-    UP = p;
-  else
-    return(0);
+  /* Set BC and UP to NULL so we can use tgoto to emit other caps
+     needing arguments. */
+  BC = (char *) NULL;
+  UP = (char *) NULL;
+
+  /* Look up operations */
+  for(a = 0; a < NUM_OPS; a++) {
+    p = tgetstr(ops_tc[a], &bp);
+    if(p)
+      ops[a] = p;
+    else
+      ops[a] = (char *) NULL;
+  }
 
   /* Look up attributes */
   for(a = 0; a < NUM_ATTR; a++) {
@@ -207,15 +233,59 @@ void tcutil_winsize (int *ncols, int *nrows) {
   }
 }
 
-void tcutil_back (void) {
-  if(BC)
-    tputs(BC, 1, putchar);
-  else
-    putchar('\b');
+void tcutil_goto (int x, int y) {
+  char *s;
+
+  if(ops[OP_CM]) {
+    /* We need to set these to use tgoto */
+    BC = ops[OP_BC];
+    UP = ops[OP_UP];
+
+    /* Get the string */
+    s = tgoto(ops[OP_CM], x, y);
+
+    /* Check if we got anything, and emit */
+    if(s)
+      tputs(s, 1, putchar);
+
+    /* Restore */
+    BC = (char *) NULL;
+    UP = (char *) NULL;
+  }
 }
 
-void tcutil_up (void) {
-  tputs(UP, 1, putchar);
+void tcutil_back (int n) {
+  int i;
+  char *s;
+
+  if(n > 1 && ops[OP_BCN]) {
+    s = tgoto(ops[OP_BCN], 0, n);
+    if(s)
+      tputs(s, 1, putchar);
+  }
+  else if(ops[OP_BC]) {
+    for(i = 0; i < n; i++)
+      tputs(ops[OP_BC], 1, putchar);
+  }
+  else if(can_bs) {
+    for(i = 0; i < n; i++)
+      putchar('\b');
+  }
+}
+
+void tcutil_up (int n) {
+  int i;
+  char *s;
+
+  if(n > 1 && ops[OP_UPN]) {
+    s = tgoto(ops[OP_UPN], 0, n);
+    if(s)
+      tputs(s, 1, putchar);
+  }
+  else if(ops[OP_UP]) {
+    for(i = 0; i < n; i++)
+      tputs(ops[OP_UP], 1, putchar);
+  }
 }
 
 void tcutil_attr (int a) {
