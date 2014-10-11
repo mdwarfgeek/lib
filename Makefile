@@ -77,5 +77,3 @@ clean:
 	rm -f $(TESTSIMPLE_OBJS) testsimple
 	rm -f $(EXTRA_OBJS)
 	rm -f .depend
-
-sinclude .depend
