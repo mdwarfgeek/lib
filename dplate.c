@@ -52,11 +52,13 @@ int dplate (void *comxptr, size_t comxoff, size_t comxsz,
   for(i = 0; i < npt; i++) {
     wt = wtptr ? GET_W(i) : 1.0;
 
-    xbar += COM_X(i) * wt;
-    ybar += COM_Y(i) * wt;
-    xref += REF_X(i) * wt;
-    yref += REF_Y(i) * wt;
-    sw += wt;
+    if(wt) {
+      xbar += COM_X(i) * wt;
+      ybar += COM_Y(i) * wt;
+      xref += REF_X(i) * wt;
+      yref += REF_Y(i) * wt;
+      sw += wt;
+    }
   }
 
   if(sw > 0) {
@@ -81,18 +83,20 @@ int dplate (void *comxptr, size_t comxoff, size_t comxsz,
   for(i = 0; i < npt; i++) {
     wt = wtptr ? GET_W(i) : 1.0;
 
-    xx1 = COM_X(i) - xbar;
-    xx2 = REF_X(i) - xref;
-    yy1 = COM_Y(i) - ybar;
-    yy2 = REF_Y(i) - yref;
-
-    sx1sq += xx1*xx1 * wt;
-    sy1sq += yy1*yy1 * wt;
-    sx1y1 += xx1*yy1 * wt;
-    sx1x2 += xx1*xx2 * wt;
-    sy1x2 += yy1*xx2 * wt;
-    sy1y2 += yy1*yy2 * wt;
-    sx1y2 += xx1*yy2 * wt;
+    if(wt) {
+      xx1 = COM_X(i) - xbar;
+      xx2 = REF_X(i) - xref;
+      yy1 = COM_Y(i) - ybar;
+      yy2 = REF_Y(i) - yref;
+      
+      sx1sq += xx1*xx1 * wt;
+      sy1sq += yy1*yy1 * wt;
+      sx1y1 += xx1*yy1 * wt;
+      sx1x2 += xx1*xx2 * wt;
+      sy1x2 += yy1*xx2 * wt;
+      sy1y2 += yy1*yy2 * wt;
+      sx1y2 += xx1*yy2 * wt;
+    }
   }
 
   /* What solution do they want? */
