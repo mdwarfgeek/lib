@@ -31,13 +31,12 @@ int dplate (void *comxptr, size_t comxoff, size_t comxsz,
             void *refyptr, size_t refyoff, size_t refysz,
             void *wtptr, size_t wtoff, size_t wtsz,
             int npt, int ncoeff, double *tr) {
-  double xmatx[9], vect[3], denom;
-
   double xbar = 0.0, ybar = 0.0, xref = 0.0, yref = 0.0, sw = 0.0;
   double sx1sq = 0.0, sy1sq = 0.0;
   double sx1y1 = 0.0, sx1x2 = 0.0, sy1x2 = 0.0;
   double sy1y2 = 0.0, sx1y2 = 0.0;
   double wt, xx1, yy1, xx2, yy2;
+  double denom;
 
   int i, rv = 0;
 
@@ -104,8 +103,10 @@ int dplate (void *comxptr, size_t comxoff, size_t comxsz,
     denom = sx1sq + sy1sq;
 
     if(denom > 0) {
-      tr[0] = (sx1x2+sy1y2) / denom;
-      tr[1] = (sy1x2-sx1y2) / denom;
+      denom = 1.0 / denom;
+
+      tr[0] = (sx1x2+sy1y2) * denom;
+      tr[1] = (sy1x2-sx1y2) * denom;
       tr[3] = tr[0];
       tr[4] = -tr[1];
     }
@@ -117,73 +118,30 @@ int dplate (void *comxptr, size_t comxoff, size_t comxsz,
 
       rv = -2;
     }
-
-    tr[2] = -xbar*tr[0] - ybar*tr[1] + xref;
-    tr[5] = -xbar*tr[4] - ybar*tr[3] + yref;
   }
   else {  /* 6-coeff */
-    /* Solution for x */
-    xmatx[0] = sx1sq;
-    xmatx[1] = sx1y1;
-    xmatx[2] = 0;
-    xmatx[3] = sx1y1;
-    xmatx[4] = sy1sq;
-    xmatx[5] = 0;
-    xmatx[6] = 0;
-    xmatx[7] = 0;
-    xmatx[8] = sw;
-    vect[0] = sx1x2;
-    vect[1] = sy1x2;
-    vect[2] = 0;
-    
-    linsolve(xmatx, vect, 3, -1.0);
-    
-    if(vect[0] == 0 && vect[1] == 0 && vect[2] == 0) {
-      /* Failed */
+    denom = sx1sq*sy1sq - sx1y1*sx1y1;
+
+    if(denom != 0) {
+      denom = 1.0 / denom;
+
+      tr[0] = (sx1x2*sy1sq - sy1x2*sx1y1) * denom;
+      tr[1] = (sy1x2*sx1sq - sx1x2*sx1y1) * denom;
+      tr[3] = (sy1y2*sx1sq - sx1y2*sx1y1) * denom;
+      tr[4] = (sx1y2*sy1sq - sy1y2*sx1y1) * denom;
+    }
+    else {
       tr[0] = 1.0;
       tr[1] = 0.0;
-      tr[2] = xbar - xref;
-      
-      rv = -2;
-    }
-    else {
-      /* Result, add back in the mean we took off */
-      tr[0] = vect[0];
-      tr[1] = vect[1];
-      tr[2] = vect[2] - xbar*tr[0] - ybar*tr[1] + xref;
-    }
-    
-    /* Solution for y */
-    xmatx[0] = sy1sq;
-    xmatx[1] = sx1y1;
-    xmatx[2] = 0;
-    xmatx[3] = sx1y1;
-    xmatx[4] = sx1sq;
-    xmatx[5] = 0;
-    xmatx[6] = 0;
-    xmatx[7] = 0;
-    xmatx[8] = sw;
-    vect[0] = sy1y2;
-    vect[1] = sx1y2;
-    vect[2] = 0;
-    
-    linsolve(xmatx, vect, 3, -1.0);
-    
-    if(vect[0] == 0 && vect[1] == 0 && vect[2] == 0) {
-      /* Failed */
       tr[3] = 1.0;
       tr[4] = 0.0;
-      tr[5] = ybar - yref;
-    }
-    else {
-      /* Result, add back in the mean we took off */
-      tr[3] = vect[0];
-      tr[4] = vect[1];
-      tr[5] = vect[2] - xbar*tr[4] - ybar*tr[3] + yref;
-      
-      rv = -3;
+
+      rv = -2;
     }
   }
+
+  tr[2] = xref - xbar*tr[0] - ybar*tr[1];
+  tr[5] = yref - xbar*tr[4] - ybar*tr[3];
 
   return(rv);
 }
