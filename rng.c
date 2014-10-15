@@ -26,7 +26,7 @@ void rng_init (struct rng_state *s, uint32_t vl) {
 #ifndef __STDC_IEC_559__
   union {
     double   d;
-    uint64_t q;
+    uint64_t i;
   } dtst = { 1.0 };
 #endif
 
@@ -71,7 +71,7 @@ void rng_init (struct rng_state *s, uint32_t vl) {
   /* Tests unity.  I'm sure this is not completely general, but it
      will spot VAX, probably the most likely of the alternative
      formats we could encounter. */
-  if(dtst.q == UINT64_C(0x3ff0000000000000))
+  if(dtst.i == UINT64_C(0x3ff0000000000000))
     s->haveieee = 1;
   else
     s->haveieee = 0;
