@@ -1,4 +1,4 @@
-/* tcutil.c:  Wrapper to hide all the termcap vilesomeness */
+/* tcutil.c:  Primitive terminal manipulation functions. */
 
 #ifdef _WIN32
 
@@ -9,7 +9,8 @@
 
 #include "tcutil.h"
 
-HANDLE h_stdout;
+static HANDLE h_stdout;
+static unsigned char reversed = 0;
 
 int tcutil_init (void) {
   CONSOLE_SCREEN_BUFFER_INFO inf;
@@ -21,6 +22,9 @@ int tcutil_init (void) {
   h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
   if(h_stdout == INVALID_HANDLE_VALUE)
     return(0);
+
+  /* Init reverse video flag */
+  reversed = 0;
 
   /* Get info */
   if(!GetConsoleScreenBufferInfo(h_stdout, &inf))
@@ -89,23 +93,63 @@ void tcutil_up (int n) {
 
 void tcutil_attr (int a) {
   CONSOLE_SCREEN_BUFFER_INFO inf;
+  WORD tmp;
 
   if(GetConsoleScreenBufferInfo(h_stdout, &inf)) {
     switch(a) {
-      /* These are mutually exclusive, so we just set it */
     case ATTR_NORM:
+      /* Reset to "normal" */
+      inf.wAttributes = FG_GREY;
+      reversed = 0;
+      break;
     case ATTR_BLINK:
     case ATTR_HALF:
-      inf.wAttributes = FG_GREY;
+      /* These do nothing, we don't have this capability. */
       break;
     case ATTR_BOLD:
-      inf.wAttributes = FG_GREY | FOREGROUND_INTENSITY;
+      /* Add bold to what's there using intensity flag. */
+      if(inf.wAttributes & FG_GREY)  /* any foreground, intensify that */
+        inf.wAttributes |= FOREGROUND_INTENSITY;
+      else  /* otherwise the background */
+        inf.wAttributes |= BACKGROUND_INTENSITY;
       break;
     case ATTR_REVERSE:
-    case ATTR_STANDOUT:  /* XXX - this is not really what ANSI does */
-      inf.wAttributes = BG_GREY;
+    case ATTR_STANDOUT:
+      /* Most terminals don't revert to normal video when sent
+         multiple reverses.  We emulate this behaviour using a
+         flag set at the first reverse to prevent more from
+         being executed. */
+      if(!reversed) {
+        /* Swap foreground and background colours and flags.
+           Done the hard way to avoid depending on the exact
+           values and storage format for the flags. */
+        tmp = 0;
+        
+        if(inf.wAttributes & FOREGROUND_RED)
+          tmp |= BACKGROUND_RED;
+        if(inf.wAttributes & FOREGROUND_GREEN)
+          tmp |= BACKGROUND_GREEN;
+        if(inf.wAttributes & FOREGROUND_BLUE)
+          tmp |= BACKGROUND_BLUE;
+        if(inf.wAttributes & FOREGROUND_INTENSITY)
+          tmp |= BACKGROUND_INTENSITY;
+        
+        if(inf.wAttributes & BACKGROUND_RED)
+          tmp |= FOREGROUND_RED;
+        if(inf.wAttributes & BACKGROUND_GREEN)
+          tmp |= FOREGROUND_GREEN;
+        if(inf.wAttributes & BACKGROUND_BLUE)
+          tmp |= FOREGROUND_BLUE;
+        if(inf.wAttributes & BACKGROUND_INTENSITY)
+          tmp |= FOREGROUND_INTENSITY;
+
+        inf.wAttributes = tmp;
+        reversed = 1;
+      }
       break;
     case ATTR_UNDERLINE:
+      /* Underline is cyan (or more generally, no red). */
+      inf.wAttributes &= ~(FOREGROUND_RED | BACKGROUND_RED);
       break;
     }
 
