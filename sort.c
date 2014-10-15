@@ -325,9 +325,10 @@ void iquicksort_gen (void *list, void *tmp,
    RMS equivalent.  Lives here because I couldn't think of a better
    place for it. */
 
-#define MAKE_medsig(DATATYPE, TQS, TABS) {                      \
-  size_t i, m;                                                  \
-  DATATYPE median;                                              \
+#define MAKE_medsig(DATATYPE, TQS, TMQS, TABS) {                \
+  size_t i, m, q[2];                                            \
+  DATATYPE median, mad, r[2];                                   \
+  int o;                                                        \
                                                                 \
   if(n < 1) {                                                   \
     /* Special case - can't do anything */                      \
@@ -340,9 +341,19 @@ void iquicksort_gen (void *list, void *tmp,
     return;                                                     \
   }                                                             \
                                                                 \
-  m = n/2;                                                      \
+  m = n / 2;                                                    \
+  o = n % 2;                                                    \
                                                                 \
-  median = TQS(list, m, n);                                     \
+  if(o)                                                         \
+    median = TQS(list, m, n);                                   \
+  else {                                                        \
+    q[0] = m-1;                                                 \
+    q[1] = m;                                                   \
+                                                                \
+    TMQS(list, 0, n-1, q, 0, 1, r);                             \
+                                                                \
+    median = 0.5*(r[0] + r[1]);                                 \
+  }                                                             \
                                                                 \
   if(median_r)                                                  \
     *median_r = median;                                         \
@@ -351,12 +362,20 @@ void iquicksort_gen (void *list, void *tmp,
     for(i = 0; i < n; i++)                                      \
       list[i] = TABS(list[i] - median);                         \
                                                                 \
-    *sigma_r = 1.482602218505601 * TQS(list, m, n);             \
+    if(o)                                                       \
+      mad = TQS(list, m, n);                                    \
+    else {                                                      \
+      TMQS(list, 0, n-1, q, 0, 1, r);                           \
+                                                                \
+      mad = 0.5*(r[0] + r[1]);                                  \
+    }                                                           \
+                                                                \
+    *sigma_r = 1.482602218505601 * mad;                         \
   }                                                             \
 }
 
 void dmedsig (double *list, size_t n, double *median_r, double *sigma_r)
-  MAKE_medsig(double, dquickselect, fabs)
+  MAKE_medsig(double, dquickselect, dmultquickselect_int, fabs)
 
 void fmedsig (float *list, size_t n, float *median_r, float *sigma_r)
-  MAKE_medsig(float, fquickselect, fabsf)
+  MAKE_medsig(float, fquickselect, fmultquickselect_int, fabsf)
