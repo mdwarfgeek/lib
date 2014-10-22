@@ -43,6 +43,7 @@ int main (int argc, char *argv[]) {
   int rv, i, n;
 
   double pr;
+  double tbc, zbc;
 
   /* The entries here correspond to lines in the output.
      type=0 are RA/DEC, and type=2 are HA/DEC */
@@ -126,14 +127,16 @@ int main (int argc, char *argv[]) {
   }
 
   /* Test of barycentric correction */
-  source_place(&obs, &src, &jtab, TR_MOTION, s, (double *) NULL, &pr);
+  source_place(&obs, &src, &jtab, TR_MOTION, s, dsdt, &pr);
+  tbc = bary_delay(&obs, s, pr);
+  zbc = bary_doppler(&obs, src.ref_n, s, dsdt, pr);
 
   printf("Bary Delta(T)  = %.10f Clock %.10f Total %.10f\n"
-	 "Bary Wave Corr = %.10f\n",
-	 bary_delay(&obs, s, pr),
+	 "Bary Vel Corr  = %.10f (z = %.15e)\n",
+	 tbc,
 	 dtt + obs.dtdb,
-	 bary_delay(&obs, s, pr) + dtt + obs.dtdb,
-	 LIGHT*bary_doppler(&obs, s));
+	 tbc + dtt + obs.dtdb,
+         LIGHT * zbc, zbc);
 
   return(0);
 }

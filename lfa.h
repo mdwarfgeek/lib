@@ -477,7 +477,8 @@ double v_airmass (double v[3]);
 /* -- bary.c: Barycentering -- */
 
 double bary_delay (struct observer *obs, double s[3], double pr);
-double bary_doppler (struct observer *obs, double s[3]);
+double bary_doppler (struct observer *obs, double sref[3],
+                     double s[3], double dsdt[3], double pr);
 
 /* -- cholesky.c: Cholesky decomposition -- */
 
