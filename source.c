@@ -16,7 +16,7 @@ void source_star (struct source *src,
 		  double pmra, double pmde,  /* sky projected, arcsec/yr */
 		  double plx, double vrad,   /* arcsec, km/s */
 		  double epoch) {
-  double sa, sd, ca, cd, df, vf;
+  double sa, sd, ca, cd, vf;
 
   /* Set source type */
   src->type = SOURCE_STAR;
@@ -46,15 +46,16 @@ void source_star (struct source *src,
 
   /* Doppler shift factor in apparent velocities, accounts for changing
      light travel time to star.  e.g. Klioner 2003. */
-  df = 1.0 / (1.0 - vrad / LIGHT);
+  src->df = 1.0 / (1.0 - vrad / LIGHT);
 
-  /* Rate of change of vector due to radial velocity */
+  /* Rate of change of vector due to radial velocity (per day).
+     Also called "radial proper motion". */
   vf = src->pr * vrad * DAY / AU;   /* pr * dr/dt */
 
   /* Space motion / day */
-  src->ref_dndt[0] = df * (-pmra * sa - pmde * ca*sd + vf * src->ref_n[0]);
-  src->ref_dndt[1] = df * ( pmra * ca - pmde * sa*sd + vf * src->ref_n[1]);
-  src->ref_dndt[2] = df * (             pmde *    cd + vf * src->ref_n[2]);
+  src->ref_dndt[0] = -pmra * sa - pmde * ca*sd + vf * src->ref_n[0];
+  src->ref_dndt[1] =  pmra * ca - pmde * sa*sd + vf * src->ref_n[1];
+  src->ref_dndt[2] =              pmde *    cd + vf * src->ref_n[2];
 
   /* Stash epoch */
   src->ref_tdb = J2K + (epoch - 2000.0) * JYR;
@@ -269,7 +270,10 @@ void source_place (struct observer *obs,
       /* Time difference */
       dt = obs->tdb - src->ref_tdb;
 
-      /* Add in Romer delay */
+      /* Change in light travel time to star (approximate) */
+      dt *= src->df;
+
+      /* Romer delay */
       dt += v_d_v(s, obs->bop) * AU / (LIGHT*DAY);
 
       v_p_sv(s, dt, src->ref_dndt);

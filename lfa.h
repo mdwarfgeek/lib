@@ -304,6 +304,9 @@ struct source {
   /* Parallax or 1/distance */
   double pr;        /* 1 / AU */
 
+  /* Doppler factor */
+  double df;
+
   /* Universal orbital elements */
   double mu;        /* G(M_1+M_2), AU^3 / day^2 */
   double nn;        /* mean daily motion */
