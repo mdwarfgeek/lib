@@ -1,5 +1,5 @@
-#ifndef __UTIL_H__
-#define __UTIL_H__
+#ifndef UTIL_H
+#define UTIL_H
 
 #include <stdint.h>
 
@@ -77,4 +77,4 @@ int daemonify (void);
 char *basename (const char *);
 char *dirname (const char *);
 
-#endif /* __UTIL_H__ */
+#endif /* UTIL_H */

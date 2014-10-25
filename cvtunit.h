@@ -1,5 +1,5 @@
-#ifndef __CVTUNIT_H__
-#define __CVTUNIT_H__
+#ifndef CVTUNIT_H
+#define CVTUNIT_H
 
 /* --Useful conversion constants-- */
 
@@ -49,4 +49,4 @@ double get_cfactor (short, short);
 /* Extract components of a date */
 int parsedate (char *, char *, int *, int *, int *);
 
-#endif  /* __CVTUNIT_H__ */
+#endif  /* CVTUNIT_H */
