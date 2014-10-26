@@ -53,7 +53,7 @@ int svdsolcov (double *a, double *b, int m, double scale) {
 
   if(scale < 0)
     /* Machine precision */
-    scale = DBL_EPSILON;
+    scale = FLT_RADIX * DBL_EPSILON;
 
   /* Threshold for singular values */
   thresh = scale*s[0];

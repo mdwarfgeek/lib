@@ -539,10 +539,6 @@ void iers_close (struct iers_table *tab);
 int iers_fetch (struct iers_table *tab, double mjd,
 		double *dut1, double *xp, double *yp, double *dxnut, double *dynut);
 
-/* -- linsolve.c: Solution of linear equations -- */
-
-int linsolve (double *a, double *b, int n, double rcond);
-
 /* -- matvec.c: matrix and vector utilities */
 
 /* Makes Euler rotation matrices about "axis" */
@@ -727,6 +723,16 @@ void makeeclm (double ang[NPNANG],
 void makecim (double ang[NPNANG], double sxy,
 	      double dxnut, double dynut,  /* nutation correction, from IERS Bull. */
 	      double m[3][3]);
+
+/* -- qr.c: QR decomposition and solution of linear equations -- */
+
+void qr (double *a, double *s, double *betaarr, int *perm, int n);
+int qrsolve (double *a, double *s, double *betaarr, int *perm,
+             double *b, int n, double rcond);
+int qrinvert (double *a, double *s, double *betaarr, int *perm,
+              double *ainv, int n, double rcond);
+
+int linsolve (double *a, double *b, int n, double rcond);
 
 /* -- refract.c: atmospheric refraction -- */
 
