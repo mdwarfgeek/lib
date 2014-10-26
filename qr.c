@@ -215,7 +215,7 @@ int qrsolve (double *a, double *s, double *betaarr, int *perm,
 int qrinvert (double *a, double *s, double *betaarr, int *perm,
               double *ainv, int n, double rcond) {
   int i, j, k, c;
-  double tmp[n];
+  double *pi, *po, tmp;
   double *qj;
 
   double beta;
@@ -319,9 +319,12 @@ int qrinvert (double *a, double *s, double *betaarr, int *perm,
   for(i = n-1; i >= 0; i--)
     if(perm[i] != i) {
       /* Swap rows */
-      memcpy(tmp, &(ainv[i*n]), sizeof(tmp));
-      memcpy(&(ainv[i*n]), &(ainv[perm[i]*n]), sizeof(tmp));
-      memcpy(&(ainv[perm[i]*n]), tmp, sizeof(tmp));
+      pi = &(ainv[perm[i]*n]);
+      po = &(ainv[i*n]);
+
+      for(j = 0; j < n; j++) {
+        SWAP(pi[j], po[j], tmp);
+      }
     }
 
   return(rank);
