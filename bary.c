@@ -84,19 +84,6 @@ double bary_doppler (struct observer *obs, double sref[3],
   double zgr, zppm0, zppm, zsd;
   int i;
 
-  /* Compute normalized observer to source vector (p) and time
-     derivative (dpdt). */
-  memcpy(p, s, sizeof(p));
-  v_p_sv(p, -pr, obs->bop);
-  nf = v_renorm(p);
-
-  memcpy(dpdt, dsdt, sizeof(dpdt));
-  v_p_sv(dpdt, -pr, obs->bev);
-  v_p_sv(dpdt, -pr, obs->gov);
-  
-  for(i = 0; i < 3; i++)
-    dpdt[i] *= nf;
-
   /* Lorentz transformations of frequency (with GR terms added):
 
      nu_ssb = nu_emit         (1 + z_gr*)
@@ -135,9 +122,29 @@ double bary_doppler (struct observer *obs, double sref[3],
 
      Result is (1+z_b) = nu_meas / nu_cat */
 
-  /* beta_star . s and p terms */
-  zppm0 = v_d_v(dsdt, sref) * AU / (DAY * LIGHT * pr);
-  zppm  = v_d_v(dsdt, p) * AU / (DAY * LIGHT * pr);
+  /* Compute normalized observer to source vector (p) and time
+     derivative (dpdt). */
+  memcpy(p, s, sizeof(p));
+  memcpy(dpdt, dsdt, sizeof(dpdt));
+
+  if(pr > 0) {
+    v_p_sv(p, -pr, obs->bop);
+    nf = v_renorm(p);
+    
+    v_p_sv(dpdt, -pr, obs->bev);
+    v_p_sv(dpdt, -pr, obs->gov);
+    
+    for(i = 0; i < 3; i++)
+      dpdt[i] *= nf;
+
+    /* beta_star . s and p terms */
+    zppm0 = v_d_v(dsdt, sref) * AU / (DAY * LIGHT * pr);
+    zppm  = v_d_v(dsdt, p) * AU / (DAY * LIGHT * pr);
+  }
+  else {
+    zppm0 = 0;
+    zppm  = 0;
+  }
 
   /* z_gr, sum of gravitational redshift terms.
      Sun and Earth only, planets can be neglected at 1 mm/s level. */
