@@ -484,6 +484,12 @@ double bary_doppler (struct observer *obs, double sref[3],
 
 int cholesky (double *a, int n);
 
+/* -- const.c: Precomputed matrices -- */
+
+extern double gcrs2ecl[3][3];
+extern double fk52ecl[3][3];
+extern double eq2gal[3][3];
+
 /* -- dplate.c: Linear transformation between 2-D coordinate systems */
 
 int dplate (void *comxptr, size_t comxoff, size_t comxsz,
@@ -698,9 +704,6 @@ void observer_obs2ast (struct observer *obs,
 double v_parallactic (double sinphi, double cosphi, double v[3]);
 
 /* -- prenut.c: precession and nutation -- */
-
-/* Precomputed GCRS to mean ecliptic of J2000 */
-extern double gcrs2ecl[3][3];
 
 /* Precession and frame bias, IAU 2006, Fukushima-Williams angles */
 void pfb06ang (double jctk, double ang[NPNANG]);

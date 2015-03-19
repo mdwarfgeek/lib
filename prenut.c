@@ -5,13 +5,6 @@
 #include "cvtunit.h"
 #include "lfa.h"
 
-/* Precomputed GCRS to ecliptic of J2000 */
-double gcrs2ecl[3][3] = {
-  {  9.99999999999994116e-1, 3.28970040774196531e-8, -1.02070447254843567e-7 },
-  { -7.07836896097155613e-8, 9.17482129914958477e-1, -3.97776999444043045e-1 },
-  {  8.05621397761318608e-8, 3.97776999444047985e-1,  9.17482129914955591e-1 }
-};
-
 void pfb06ang (double t, double ang[NPNANG]) {
   /* Precession and frame bias, IAU 2006, Fukushima-Williams angles.
      Coefficients from Hilton et al. 2006 */

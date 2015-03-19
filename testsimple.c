@@ -138,5 +138,19 @@ int main (int argc, char *argv[]) {
 	 tbc + dtt + obs.dtdb,
          LIGHT * zbc, zbc);
 
+  /* Test of equatorial to galactic */
+  m_x_v(eq2gal, src.ref_n, s);
+  m_x_v(eq2gal, src.ref_dndt, dsdt);
+
+  v_to_ad(s, 0, &a, &d);
+  if(a < 0)
+    a += TWOPI;
+
+  printf("l=%.3f b=%.3f\n", a*RAD_TO_DEG, d*RAD_TO_DEG);
+  printf("(U, V, W) = (%.3f, %.3f, %.3f)\n",
+         dsdt[0]*AU/(DAY*1000*src.pr),
+         dsdt[1]*AU/(DAY*1000*src.pr),
+         dsdt[2]*AU/(DAY*1000*src.pr));
+
   return(0);
 }
