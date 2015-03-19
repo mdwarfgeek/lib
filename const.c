@@ -46,7 +46,7 @@ double ecl2fk5[3][3] = {
    As stated in the Hipparcos documentation, the distinction between
    ICRS and FK5 can be neglected given the uncertainties.
 
-   Matrix is for a left-handed coordinate system, so when used for
+   Matrix is for a right-handed coordinate system, so when used for
    transforming velocities, positive U is toward the Galactic centre
    (e.g. Johnson & Soderblom 1987). */
 
