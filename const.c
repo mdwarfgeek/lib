@@ -28,7 +28,11 @@ double fk52ecl[3][3] = {
    l_omega    =  32.93192 deg
    
    As stated in the Hipparcos documentation, the distinction between
-   ICRS and FK5 can be neglected given the uncertainties. */
+   ICRS and FK5 can be neglected given the uncertainties.
+
+   Matrix is for a left-handed coordinate system, so when used for
+   transforming velocities, positive U is toward the Galactic centre
+   (e.g. Johnson & Soderblom 1987). */
 
 double eq2gal[3][3] = {
   { -5.48755604162155797e-2, -8.73437090234885138e-1, -4.83835015548713165e-1 },
