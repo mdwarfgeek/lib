@@ -487,8 +487,11 @@ int cholesky (double *a, int n);
 /* -- const.c: Precomputed matrices -- */
 
 extern double gcrs2ecl[3][3];
+extern double ecl2gcrs[3][3];
 extern double fk52ecl[3][3];
+extern double ecl2fk5[3][3];
 extern double eq2gal[3][3];
+extern double gal2eq[3][3];
 
 /* -- dplate.c: Linear transformation between 2-D coordinate systems */
 

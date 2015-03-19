@@ -137,7 +137,7 @@ void source_elem (struct source *src,
   euler_rotate(tmp, 3, -longperi);
   euler_rotate(tmp, 1, -incl);
   euler_rotate(tmp, 3, -anode);
-  m_x_m(gcrs2ecl, tmp, rot);
+  m_x_m(ecl2gcrs, tmp, rot);
 
   /* Reference epoch */
   src->ref_tdb = epoch;
