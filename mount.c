@@ -44,12 +44,12 @@ int mount_ab2rp (double *aim, double *daimdt,
   cp = salph*bore[2] + calph*bore[0];
 
   /* From Wallace, r = atan((aim_y*x - aim_x*y) / (aim_x*x + aim_y*y))
-     x = bore_x*cp + bore_z*sp
-     y = bore_y*cnp + (bore_x*sp - bore_z*cp) * snp
+     x = bore_x*cp - bore_z*sp
+     y = bore_y*cnp + (bore_x*sp + bore_z*cp) * snp
   */
 
-  x = cp*bore[0] + sp*bore[2];
-  y = cnp*bore[1] + (sp*bore[0] - cp*bore[2])*snp;
+  x = cp*bore[0] - sp*bore[2];
+  y = cnp*bore[1] + (sp*bore[0] + cp*bore[2])*snp;
 
   /* sin and cos of r */
   sr = x*aim[1] - y*aim[0];
