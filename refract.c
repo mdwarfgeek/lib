@@ -78,11 +78,12 @@ void refract_vec (double *refco, unsigned char unref,
 
   double drefsum, sdersum, dtansqzddt, dfacdt, dwtdt;
 
-  /* Hold constant below about 3 degrees */
+  /* Above about 85 degrees, we're in trouble, so keep it from going
+     berserk by clamping the z component at 0.1. */
   z = vi[2];
   dzdt = dvidt ? dvidt[2] : 0;
-  if(z < 0.05) {
-    z = 0.05;
+  if(z < 0.1) {
+    z = 0.1;
     dzdt = 0;
   }
 
