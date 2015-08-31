@@ -55,9 +55,7 @@
 
 /* Other astrophysical quantities */
 
-#define RSUN   6.95508e8         /* m, from Brown & Christensen-Dalsgaard 1998
-                                  * and as adopted by Cox 2000 (Allen's
-                                  * Astrophysical Quantities, 4th Ed.) */
+#define RSUN   6.957e8           /* m, IAU 2015 Resol B3 conversion constant */
 
 /* -- Other constants -- */
 
