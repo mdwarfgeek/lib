@@ -187,8 +187,7 @@ int main (int argc, char *argv[]) {
       v_to_ad(s, 0, &a, &d);
       v_to_ad_dt(s, dsdt, 0, &dadt, &dddt);
 
-      if(a < 0)
-	a += TWOPI;
+      a = ranormp(a);
 
       base10_to_60(a, UNIT_RAD, astr, sizeof(astr), " ", "", 3, UNIT_HR);
       base10_to_60(d, UNIT_RAD, dstr, sizeof(dstr), " ", "+", 2, UNIT_DEG);

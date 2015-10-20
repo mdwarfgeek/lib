@@ -115,8 +115,7 @@ int main (int argc, char *argv[]) {
     }
     else {
       /* RA in [0,2*pi] */
-      if(a < 0)
-        a += TWOPI;
+      a = ranormp(a);
     }
 
     base10_to_60(a, UNIT_RAD, astr, sizeof(astr), " ", " ", 6, UNIT_HR);
@@ -143,8 +142,7 @@ int main (int argc, char *argv[]) {
   m_x_v(eq2gal, src.ref_dndt, dsdt);
 
   v_to_ad(s, 0, &a, &d);
-  if(a < 0)
-    a += TWOPI;
+  a = ranormp(a);
 
   printf("l=%.3f b=%.3f\n", a*RAD_TO_DEG, d*RAD_TO_DEG);
   printf("(U, V, W) = (%.3f, %.3f, %.3f)\n",
