@@ -444,7 +444,7 @@ struct wcs_info {
 
 /* Wrap angle to [0, TWOPI).  The second fmod for negative cases prevents
    very small negative numbers from wrapping to +TWOPI. */
-#define ranorm(a) ((a) >= 0 ? fmod((a), TWOPI) : fmod(fmod((a), TWOPI) + TWOPI, TWOPI)
+#define ranorm(a) ((a) >= 0 ? fmod((a), TWOPI) : fmod(fmod((a), TWOPI) + TWOPI, TWOPI))
 
 /* Wrap [-PI, PI] angle to [0, TWOPI) */
 #define ranormp(a) fmod((a) + TWOPI, TWOPI)
