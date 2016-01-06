@@ -521,6 +521,13 @@ double dtdb (double mjd,        /* TDB as MJD (but TT is adequate) */
 	     double u,          /* distance from Earth spin axis, m */
 	     double z);         /* distance from Earth equatorial plane, m */
 
+/* -- filt1d.c: standard 1-D filters -- */
+
+int filt1d_nwork (int npt, int nkern);
+void filt1d_boxcar (float *buf, float *work, int npt, int nkern);
+void filt1d_hanning (float *buf, float *work, int npt);
+void filt1d_median (float *buf, float *work, int npt, int nkern);
+
 /* -- fpcoord.c: focal plane coordinates -- */
 
 int vec2tp (double s[3], double tp[3], double *x, double *y);

@@ -24,7 +24,7 @@ TERMCAP_LIBS?=-lncurses
 
 ### End constants section ###
 
-SRCS=airmass.c bary.c cholesky.c cnf.c const.c cvtunit.c dplate.c dtai.c dtdb.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c qr.c refract.c rng.c shuffle.c skylevel.c sort.c source.c strutil.c stumpff.c sysinfo.c util.c wcs.c
+SRCS=airmass.c bary.c cholesky.c cnf.c const.c cvtunit.c dplate.c dtai.c dtdb.c filt1d.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c qr.c refract.c rng.c shuffle.c skylevel.c sort.c source.c strutil.c stumpff.c sysinfo.c util.c wcs.c
 OBJS=${SRCS:%.c=%.o}
 
 EXTRA_SRCS=fitsutil.c lautil.c tcutil.c
