@@ -21,7 +21,7 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
   int nmed;
 
   int bx, by, ox, oy, x, y, p, pb, v;
-  float skylev, skynoise;
+  float f, skylev, skynoise;
 
   float rsizex, rsizey, dx, dy;
   int bxp, byp;
@@ -102,12 +102,14 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
           p = (oy+y)*nx + (ox+x);
 
           if(!mask || mask[p]) {
-            v = rintf(mapin[p]);
+            f = rintf(mapin[p]);
 
-            if(v < 0)
+            if(f < 0)
               v = 0;
-            if(v > 65535)
+            else if(f > 65535)
               v = 65535;
+            else
+              v = f;
 
             hist[v]++;
             nhist++;
