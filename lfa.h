@@ -524,9 +524,12 @@ double dtdb (double mjd,        /* TDB as MJD (but TT is adequate) */
 /* -- filt1d.c: standard 1-D filters -- */
 
 int filt1d_nwork (int npt, int nkern);
-void filt1d_boxcar (float *buf, float *work, int npt, int nkern);
-void filt1d_hanning (float *buf, float *work, int npt);
-void filt1d_median (float *buf, float *work, int npt, int nkern);
+void filt1d_boxcar (float *buf, unsigned char *mask, float *work,
+                    int npt, int nstride, int nkern);
+void filt1d_hanning (float *buf, unsigned char *mask, float *work,
+                     int npt, int nstride);
+void filt1d_median (float *buf, unsigned char *mask, float *work,
+                    int npt, int nstride, int nkern);
 
 /* -- fpcoord.c: focal plane coordinates -- */
 

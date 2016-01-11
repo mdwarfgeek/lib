@@ -18,8 +18,9 @@ int filt1d_nwork (int npt, int nkern) {
   return(nwork);
 }
 
-static inline void filt1d_linear_prep (float *buf, float *work,
-                                       int npt, int nkern) {
+static inline void filt1d_linear_prep (float *buf, unsigned char *mask,
+                                       float *work,
+                                       int npt, int nstride, int nkern) {
   float sum, xmns, xmnf;
   int i, il, ilow;
 
@@ -33,28 +34,29 @@ static inline void filt1d_linear_prep (float *buf, float *work,
 
   sum = 0.0;
   for(i = 0; i < ilow; i++)
-    sum += buf[i];
+    sum += buf[i*nstride];
 
   xmns = sum / ilow;
 
   sum = 0.0;
   for(i = 0; i < ilow; i++)
-    sum += buf[npt-1-i];
+    sum += buf[(npt-1-i)*nstride];
 
   xmnf = sum / ilow;
 
   /* Reflect edges before filtering */
   for(i = 0; i < il; i++) {
-    work[i] = 2.0 * xmns - buf[il+ilow-1-i];
-    work[npt+i+il] = 2.0 * xmnf - buf[npt-i-ilow-1];
+    work[i] = 2.0 * xmns - buf[(il+ilow-1-i)*nstride];
+    work[npt+i+il] = 2.0 * xmnf - buf[(npt-i-ilow-1)*nstride];
   }
 
   for(i = 0; i < npt; i++)
-    work[i+il] = buf[i];
+    work[i+il] = buf[i*nstride];
 }
 
-static inline void filt1d_median_prep (float *buf, float *work,
-                                       int npt, int nkern) {
+static inline void filt1d_median_prep (float *buf, unsigned char *mask,
+                                       float *work,
+                                       int npt, int nstride, int nkern) {
 
   float xmns, xmnf;
   int i, imed, ilow;
@@ -68,33 +70,34 @@ static inline void filt1d_median_prep (float *buf, float *work,
     ilow = (ilow/2)*2 + 1;
 
   for(i = 0; i < ilow; i++)
-    work[i] = buf[i];
+    work[i] = buf[i*nstride];
 
   xmns = fquickselect(work, ilow/2, ilow);
 
   for(i = 0; i < ilow; i++)
-    work[i] = buf[npt-1-i];
+    work[i] = buf[(npt-1-i)*nstride];
 
   xmnf = fquickselect(work, ilow/2, ilow);
 
   /* Reflect edges before filtering */
   for(i = 0; i < imed; i++) {
-    work[i] = 2.0 * xmns - buf[imed+ilow-1-i];
-    work[npt+i+imed] = 2.0 * xmnf - buf[npt-i-ilow-1];
+    work[i] = 2.0 * xmns - buf[(imed+ilow-1-i)*nstride];
+    work[npt+i+imed] = 2.0 * xmnf - buf[(npt-i-ilow-1)*nstride];
   }
 
   for(i = 0; i < npt; i++)
-    work[i+imed] = buf[i];
+    work[i+imed] = buf[i*nstride];
 }
 
-void filt1d_boxcar (float *buf, float *work, int npt, int nkern) {
+void filt1d_boxcar (float *buf, unsigned char *mask, float *work,
+                    int npt, int nstride, int nkern) {
   float sum, norm;
   int i, po;
 
-  if(npt <= nkern)
+  if(npt < 4 || npt <= nkern)
     return;
 
-  filt1d_linear_prep(buf, work, npt, nkern);
+  filt1d_linear_prep(buf, mask, work, npt, nstride, nkern);
 
   /* Boxcar filter on rest, inefficiently - can't do the obvious
      optimization of adding and subtracting in FP to avoid loss of
@@ -106,34 +109,36 @@ void filt1d_boxcar (float *buf, float *work, int npt, int nkern) {
     for(i = 0; i < nkern; i++)
       sum += work[i+po];
 
-    buf[po] = sum * norm;
+    buf[po*nstride] = sum * norm;
   }
 }
 
-void filt1d_hanning (float *buf, float *work, int npt) {
-  int nkern = 3, i;
+void filt1d_hanning (float *buf, unsigned char *mask, float *work,
+                     int npt, int nstride) {
+  int i;
 
-  if(npt <= nkern)
+  if(npt < 4)
     return;
 
-  filt1d_linear_prep(buf, work, npt, nkern);
+  filt1d_linear_prep(buf, mask, work, npt, nstride, 3);
 
   /* Hanning filter on rest */
   for(i = 0; i < npt; i++)
-    buf[i] = 0.25*(work[i]+2*work[i+1]+work[i+2]);
+    buf[i*nstride] = 0.25*(work[i]+2*work[i+1]+work[i+2]);
 }
 
-void filt1d_median (float *buf, float *work, int npt, int nkern) {
+void filt1d_median (float *buf, unsigned char *mask, float *work,
+                    int npt, int nstride, int nkern) {
   struct filt1d_median_sort_tmp sortbuf[nkern], sorttmp;
   int revptr[nkern];
 
   float vmed, vnew, vmid;
   int i, il, ih, imed, imid, pi, po, r;
 
-  if(npt <= nkern)
+  if(npt < 4 || npt <= nkern)
     return;
 
-  filt1d_median_prep(buf, work, npt, nkern);
+  filt1d_median_prep(buf, mask, work, npt, nstride, nkern);
 
   /* Set first and last edges equal */
   imed = nkern/2;
@@ -225,6 +230,6 @@ void filt1d_median (float *buf, float *work, int npt, int nkern) {
 
     /* Finding the median is easy after all that work */
     vmed = sortbuf[imed].v;
-    buf[po] = vmed;
+    buf[po*nstride] = vmed;
   }
 }
