@@ -142,3 +142,45 @@ void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
   *sigma_r = sigmac;
 }
 
+/* Simple driver routine to calculate sky level of contiguous image
+   pixels, the most common case. */
+
+void skylevel_image (float *map, unsigned char *mask, int npix,
+                     float clip_low, float clip_high,
+                     float *skylev, float *skynoise) {
+  int hist[65536], nhist, hmin, hmax, v, p;
+  float f;
+
+  /* Clear histogram */
+  for(v = 0; v <= 65535; v++)
+    hist[v] = 0;
+  
+  hmin = 65535;
+  hmax = 0;
+
+  nhist = 0;
+  
+  /* Accumulate pixels */
+  for(p = 0; p < npix; p++) {
+    if(!mask || mask[p]) {
+      f = rintf(map[p]);
+      
+      if(f < 0)
+        v = 0;
+      else if(f > 65535)
+        v = 65535;
+      else
+        v = f;
+
+      hist[v]++;
+      nhist++;
+      
+      if(v < hmin)
+        hmin = v;
+      if(v > hmax)
+        hmax = v;
+    }
+  }
+  
+  skylevel(hist, hmin, hmax, nhist, clip_low, clip_high, skylev, skynoise);
+}

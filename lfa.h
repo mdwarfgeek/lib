@@ -816,6 +816,10 @@ void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
 	       float clip_low, float clip_high,
 	       float *skylev_r, float *sigma_r);
 
+void skylevel_image (float *map, unsigned char *mask, int npix,
+                     float clip_low, float clip_high,
+                     float *skylev, float *skynoise);
+
 /* -- sort.c: sorting and selection -- */
 
 /* Select the k'th smallest of il..ir elements of size s, each 
