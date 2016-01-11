@@ -476,6 +476,11 @@ struct wcs_info {
 
 double v_airmass (double v[3]);
 
+/* -- background.c: image background removal for object detection -- */
+
+int backremove (float *mapin, unsigned char *mask, float *mapout,
+                int nx, int ny, int nbsize);
+
 /* -- bary.c: Barycentering -- */
 
 double bary_delay (struct observer *obs, double s[3], double pr);
