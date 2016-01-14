@@ -56,6 +56,8 @@
 /* Other astrophysical quantities */
 
 #define RSUN   6.957e8           /* m, IAU 2015 Resol B3 conversion constant */
+#define RJUP   7.1492e7          /* m, equ., IAU 2015 Resol B3 */
+#define REARTH 6.3781e6          /* m, equ., IAU 2015 Resol B3 */
 
 /* -- Other constants -- */
 
