@@ -11,7 +11,7 @@
 #OPT=-g
 
 # OPT:
-OPT=-g -O3 -ffast-math
+OPT=-g -O3
 
 # Compiler flags
 CFLAGS=-std=gnu99 -Wall $(OPT) -fPIC -I$(HOME)/include
