@@ -17,7 +17,8 @@ OPT=-g -O3 -ffast-math
 CFLAGS=-std=gnu99 -Wall $(OPT) -fPIC -I$(HOME)/include
 
 # Extra flags for CFITSIO
-CFITSIO_INC?=-I/usr/local/include
+CFITSIO_INC?=`pkg-config cfitsio --cflags`
+CFITSIO_LIBS?=`pkg-config cfitsio --libs`
 
 # Termcap libraries.  Set blank on Win32.
 TERMCAP_LIBS?=-lncurses
