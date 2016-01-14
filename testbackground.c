@@ -62,6 +62,7 @@ static int do_file (char *infile, char *maskfile, char *outfile, int nbsize,
   char card[FLEN_CARD];
 
   float pedestal;
+  int p;
 
   float *buf = (float *) NULL;
   unsigned char *mask = (unsigned char *) NULL;
@@ -163,6 +164,11 @@ static int do_file (char *infile, char *maskfile, char *outfile, int nbsize,
     goto error;
   }
 
+  /* Fix PEDESTAL if present */
+  for(p = 0; p < npix; p++)
+    buf[p] -= pedestal;
+
+  /* Close file */
   ffclos(inf, &status);
   if(status) {
     fitsio_err(errstr, status, "ffclos");
@@ -241,7 +247,6 @@ static int do_file (char *infile, char *maskfile, char *outfile, int nbsize,
 
   fprintf(stderr, "Sky level after = %.3f noise = %.3f\n",
           skylev, skynoise);
-
 
   /* Write map */
   ffppre(outf, 1, 1, npix, buf, &status);
