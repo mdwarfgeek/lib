@@ -72,6 +72,10 @@ fftutil.o: fftutil.c
 fitsutil.o: fitsutil.c
 	$(CC) $(CFLAGS) $(CFITSIO_INC) -o $@ -c $<
 
+testbackground: testbackground.o fitsutil.o liblfa.a
+	$(CC) -o testbackground testbackground.o fitsutil.o \
+                 liblfa.a $(CFITSIO_LIBS) -lm
+
 testmpc: $(TESTMPC_OBJS) liblfa.a
 	$(CC) -o testmpc $(TESTMPC_OBJS) liblfa.a $(TERMCAP_LIBS) -lm
 
