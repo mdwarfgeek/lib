@@ -35,6 +35,12 @@ OBJS=${SRCS:%.c=%.o}
 EXTRA_SRCS=fftutil.c fitsutil.c lautil.c tcutil.c
 EXTRA_OBJS=${EXTRA_SRCS:%.c=%.o}
 
+TESTAP_SRCS=testap.c fitsutil.c
+TESTAP_OBJS=${TESTAP_SRCS:%.c=%.o}
+
+TESTBACKGROUND_SRCS=testbackground.c fitsutil.c
+TESTBACKGROUND_OBJS=${TESTBACKGROUND_SRCS:%.c=%.o}
+
 TESTMPC_SRCS=testmpc.c tcutil.c
 TESTMPC_OBJS=${TESTMPC_SRCS:%.c=%.o}
 
@@ -72,11 +78,11 @@ fftutil.o: fftutil.c
 fitsutil.o: fitsutil.c
 	$(CC) $(CFLAGS) $(CFITSIO_INC) -o $@ -c $<
 
-testap: testap.o fitsutil.o liblfa.a
-	$(CC) -o testap testap.o fitsutil.o liblfa.a $(CFITSIO_LIBS) -lm
+testap: $(TESTAP_OBJS) liblfa.a
+	$(CC) -o testap $(TESTAP_OBJS) liblfa.a $(CFITSIO_LIBS) -lm
 
-testbackground: testbackground.o fitsutil.o liblfa.a
-	$(CC) -o testbackground testbackground.o fitsutil.o \
+testbackground: $(TESTBACKGROUND_OBJS) liblfa.a
+	$(CC) -o testbackground $(TESTBACKGROUND_OBJS) \
                  liblfa.a $(CFITSIO_LIBS) -lm
 
 testmpc: $(TESTMPC_OBJS) liblfa.a
@@ -93,6 +99,8 @@ testsimple: $(TESTSIMPLE_OBJS) liblfa.a
 
 clean:
 	rm -f $(OBJS) liblfa.a
+	rm -f $(TESTAP_OBJS) testap
+	rm -f $(TESTBACKGROUND_OBJS) testbackground
 	rm -f $(TESTMPC_OBJS) testmpc
 	rm -f $(TESTPLAN_OBJS) testplan
 	rm -f $(TESTRNG_OBJS) testrng
