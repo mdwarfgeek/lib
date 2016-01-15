@@ -21,8 +21,8 @@ CFITSIO_INC?=`pkg-config cfitsio --cflags`
 CFITSIO_LIBS?=`pkg-config cfitsio --libs`
 
 # FFTW3 float version include and library paths
-FFTW3F_CFLAGS=`pkg-config fftw3f --cflags`
-FFTW3F_LIBS=`pkg-config fftw3f --libs`
+FFTW3F_INC?=`pkg-config fftw3f --cflags`
+FFTW3F_LIBS?=`pkg-config fftw3f --libs`
 
 # Termcap libraries.  Set blank on Win32.
 TERMCAP_LIBS?=-lncurses
