@@ -1,5 +1,7 @@
+#ifndef _WIN32
 #include <sys/types.h>
 #include <unistd.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

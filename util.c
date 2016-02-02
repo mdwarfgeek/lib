@@ -1,7 +1,9 @@
+#ifndef _WIN32
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,13 +13,20 @@
 #include <ctype.h>
 #include <errno.h>
 
+#if defined(_WIN32)
+#include <windows.h>
+#define PROGNAMELEN MAX_PATH
+#else
+#define PROGNAMELEN PATH_MAX
+#endif
+
 #include "util.h"
 
-char progname[PATH_MAX+1] = { '\0' };
+char progname[PROGNAMELEN+1] = { '\0' };
 
 void setprogname (const char *name) {
-  (void) strncpy(progname, name, PATH_MAX);
-  progname[PATH_MAX] = '\0';
+  (void) strncpy(progname, name, PROGNAMELEN);
+  progname[PROGNAMELEN] = '\0';
 }
 
 void fatal (int code, const char *fmt, ...) {
