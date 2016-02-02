@@ -5,6 +5,9 @@
 # C compiler
 #CC=gcc
 
+# Language flags
+LANG=-std=gnu99 -fno-strict-aliasing
+
 # Optimization flags
 
 # DEBUG:
@@ -14,7 +17,7 @@
 OPT=-g -O3
 
 # Compiler flags
-CFLAGS=-std=gnu99 -Wall $(OPT) -fPIC -I$(HOME)/include
+CFLAGS=$(LANG) -Wall $(OPT) -fPIC -I$(HOME)/include
 
 # Extra flags for CFITSIO
 CFITSIO_INC?=`pkg-config cfitsio --cflags`
