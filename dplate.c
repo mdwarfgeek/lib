@@ -40,12 +40,13 @@ int dplate (void *comxptr, size_t comxoff, size_t comxsz,
 
   int i, rv = 0;
 
+#define CBYTE(p) ((unsigned char *) (p))
 #define DDREF(p) *((double *) (p))
-#define COM_X(i) DDREF(comxptr + comxsz*(i) + comxoff)
-#define COM_Y(i) DDREF(comyptr + comysz*(i) + comyoff)
-#define REF_X(i) DDREF(refxptr + refxsz*(i) + refxoff)
-#define REF_Y(i) DDREF(refyptr + refysz*(i) + refyoff)
-#define GET_W(i) DDREF(wtptr  + wtsz*(i)  + wtoff)
+#define COM_X(i) DDREF(CBYTE(comxptr) + comxsz*(i) + comxoff)
+#define COM_Y(i) DDREF(CBYTE(comyptr) + comysz*(i) + comyoff)
+#define REF_X(i) DDREF(CBYTE(refxptr) + refxsz*(i) + refxoff)
+#define REF_Y(i) DDREF(CBYTE(refyptr) + refysz*(i) + refyoff)
+#define GET_W(i) DDREF(CBYTE(wtptr)  + wtsz*(i)  + wtoff)
 
   /* Compute mean x and y */
   for(i = 0; i < npt; i++) {
