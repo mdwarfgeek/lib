@@ -456,10 +456,12 @@ int jpleph_fetch (struct jpleph_table *p, double mjd, int body,
 static void cheby (double tc, double pfac, double vfac,
 		   double *coef, int ncoef, int ncpt,
 		   double *pos, double *vel) {
-  double pc[ncoef], vc[ncoef];
   double twot = 2*tc;
 
   int i, p, op;
+
+  VLAONSTACK(double, pc, ncoef);
+  VLAONSTACK(double, vc, ncoef);
 
   /* Evaluate polynomial and derivative */
   pc[0] = 1.0;

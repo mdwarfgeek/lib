@@ -13,6 +13,10 @@
 #include <features.h>
 #endif
 
+#if defined(_MSC_VER)
+#include <malloc.h>
+#endif
+
 /* -- Physical, Mathematical and Astronomical constants -- */
 
 /* NOTE: integer constants are expressed here without the .0, so be
@@ -92,6 +96,17 @@
 #define TR_TO_OBS_HD  (TR_TO_TOPO_HD | TR_REFRO)
 #define TR_TO_TOPO_AZ (TR_TO_TOPO_HD | TR_LAT)
 #define TR_TO_OBS_AZ  (TR_TO_TOPO_AZ | TR_REFRO)
+
+/* -- Miscellaneous macros -- */
+
+/* Make a variable length array on the stack.  Uses _alloca on MSVC
+   to patch around lack of support for C99 variable length automatic
+   arrays.  Assumes C99 support on all other compilers. */
+#if defined(_MSC_VER)
+#define VLAONSTACK(t, i, n) t *i = (t *) _alloca((n) * sizeof(t)) 
+#else
+#define VLAONSTACK(t, i, n) t i[n]
+#endif
 
 /* -- Data structures -- */
 

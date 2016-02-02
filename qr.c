@@ -334,8 +334,9 @@ int qrinvert (double *a, double *s, double *betaarr, int *perm,
    values of n that will fit on the stack. */
 
 int linsolve (double *a, double *b, int n, double rcond) {
-  double s[n], betaarr[n];
-  int perm[n];
+  VLAONSTACK(double, s, n);
+  VLAONSTACK(double, betaarr, n);
+  VLAONSTACK(int, perm, n);
 
   /* QR */
   qr(a, s, betaarr, perm, n);

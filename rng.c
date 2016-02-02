@@ -227,7 +227,9 @@ int rng_fetch_mvgauss (struct rng_state *s,
                        double *work,
                        double *ans, int n) {
   int i, j, rv = 0;
-  double z[n], x;
+  double x;
+
+  VLAONSTACK(double, z, n);
 
   if(cov) {
     /* Copy into workspace */

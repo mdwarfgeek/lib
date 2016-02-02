@@ -23,9 +23,11 @@ void dpotrf_ (char *, int *, double *, int *, int *, unsigned int);
 
 int svdsolve (double *a, double *b, int m, double scale) {
   int lwork = 6*m;
-  double s[m], work[lwork];
   double rcond = -1.0;
   int nrhs = 1, rank, info;
+
+  VLAONSTACK(double, s, m);
+  VLAONSTACK(double, work, lwork);
 
   dgelss_(&m, &m, &nrhs,
           a, &m, b, &m, s, &rcond, &rank,
@@ -39,11 +41,15 @@ int svdsolve (double *a, double *b, int m, double scale) {
 
 int svdsolcov (double *a, double *b, int m, double scale) {
   int lwork = 6*m;
-  double s[m], u[m*m], vt[m*m], work[lwork];
   int mthr, info;
 
   int i, j, k;
   double thresh, sum, sol;
+
+  VLAONSTACK(double, s, m);
+  VLAONSTACK(double, u, m*m);
+  VLAONSTACK(double, vt, m*m);
+  VLAONSTACK(double, work, lwork);
 
   /* Perform decomposition */
   dgesvd_("A", "A",
@@ -99,7 +105,9 @@ int mvgaussdev (struct rng_state *s,
                 double *work,
                 double *ans, int n) {
   int i, j, info;
-  double z[n], zz;
+  double zz;
+
+  VLAONSTACK(double, z, n);
 
   if(cov) {
     /* Copy into workspace */

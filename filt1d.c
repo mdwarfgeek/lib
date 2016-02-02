@@ -129,11 +129,13 @@ void filt1d_hanning (float *buf, unsigned char *mask, float *work,
 
 void filt1d_median (float *buf, unsigned char *mask, float *work,
                     int npt, int nstride, int nkern) {
-  struct filt1d_median_sort_tmp sortbuf[nkern], sorttmp;
-  int revptr[nkern];
+  struct filt1d_median_sort_tmp sorttmp;
 
   float vmed, vnew, vmid;
   int i, il, ih, imed, imid, pi, po, r;
+
+  VLAONSTACK(struct filt1d_median_sort_tmp, sortbuf, nkern);
+  VLAONSTACK(int, revptr, nkern);
 
   if(npt < 4 || npt <= nkern)
     return;
