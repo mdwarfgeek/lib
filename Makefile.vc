@@ -1,0 +1,45 @@
+# Makefile for liblfa
+
+### Constants: edit to suit your system ###
+
+# Compiler flags
+CFLAGS=/D_USE_MATH_DEFINES /O2
+
+# Extra flags for CFITSIO
+CFITSIO_INC=/I..\cfitsio
+CFITSIO_LIBS=..\cfitsio\cfitsio.lib
+
+# FFTW3 float version include and library paths
+FFTW3F_INC=/I..\fftw
+FFTW3F_LIBS=..\fftw\libfftw3f-3.lib
+
+### End constants section ###
+
+SRCS=airmass.c ap.c background.c bary.c cholesky.c cnf.c const.c cvtunit.c dplate.c dtai.c dtdb.c filt1d.c fpcoord.c geoc.c iers.c jpleph.c matvec.c mjd.c mount.c mpc.c observer.c parallactic.c prenut.c qr.c refract.c rng.c shuffle.c skylevel.c sort.c source.c strutil.c stumpff.c sysinfo.c util.c wcs.c
+OBJS=$(SRCS:.c=.obj)
+
+EXTRA_SRCS=fftutil.c fitsutil.c lautil.c tcutil.c
+EXTRA_OBJS=$(EXTRA_SRCS:.c=.obj)
+
+# Rules for building
+
+.SUFFIXES: .c .obj
+
+.c.obj:
+	$(CC) $(CFLAGS) /c $*.c
+
+all: liblfa.lib
+
+extra: $(EXTRA_OBJS)
+
+liblfa.lib: $(OBJS)
+	lib $(OBJS) -OUT:liblfa.lib
+
+fftutil.obj: fftutil.c
+	$(CC) $(CFLAGS) $(FFTW3F_INC) /c $*.c
+
+fitsutil.obj: fitsutil.c
+	$(CC) $(CFLAGS) $(CFITSIO_INC) /c $*.c
+
+clean:
+	del $(OBJS) $(EXTRA_OBJS) liblfa.lib
