@@ -517,6 +517,33 @@ extern double ecl2fk5[3][3];
 extern double eq2gal[3][3];
 extern double gal2eq[3][3];
 
+/* -- dict.c: Simple dictionary (hash table) */
+
+struct dict_entry {
+  uint32_t hash;
+  uint32_t keylen;
+  void *key;
+  void *value;
+  struct dict_entry *next;
+};
+
+struct dict {
+  struct dict_entry **list;
+  uint32_t nalloc;
+  uint32_t nused;
+};
+
+int dict_init (struct dict *d, uint32_t nalloc);
+void dict_free (struct dict *d);
+int dict_delete (struct dict *d,
+                 void *key, uint32_t keylen);
+int dict_fetch (struct dict *d,
+                void *key, uint32_t keylen,
+                void **value);
+int dict_store (struct dict *d,
+                void *key, uint32_t keylen,
+                void *value);
+
 /* -- dplate.c: Linear transformation between 2-D coordinate systems */
 
 int dplate (void *comxptr, size_t comxoff, size_t comxsz,
