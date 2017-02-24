@@ -44,7 +44,7 @@ int iers_open (struct iers_table *tab,
 
   if(extractdouble(buf, tab->recsize, 8, 15, &mjd)) {
     fclose(tab->fp);
-    return(-2);
+    return(-3);
   }
 
   tab->mjd_start = mjd;
@@ -58,19 +58,19 @@ int iers_open (struct iers_table *tab,
   /* Sanity check that record lengths are the same */
   if(strlen(buf) != tab->recsize) {
     fclose(tab->fp);
-    return(-2);
+    return(-3);
   }
 
   if(extractdouble(buf, tab->recsize, 8, 15, &mjd)) {
     fclose(tab->fp);
-    return(-2);
+    return(-3);
   }
 
   tab->mjd_step = mjd - tab->mjd_start;
 
   if(tab->mjd_step <= 0) {
     fclose(tab->fp);
-    return(-2);
+    return(-3);
   }
 
   /* Seek to last record */
@@ -112,7 +112,7 @@ int iers_open (struct iers_table *tab,
     /* Sanity check that record lengths are the same */
     if(strlen(buf) != tab->recsize) {
       fclose(tab->fp);
-      return(-2);
+      return(-3);
     }
 
     /* Column 17 blank = no prediction, so wait until it's not */
@@ -134,7 +134,7 @@ int iers_open (struct iers_table *tab,
   /* We should now be pointing at the last record with data. */
   if(extractdouble(buf, tab->recsize, 8, 15, &mjd)) {
     fclose(tab->fp);
-    return(-2);
+    return(-3);
   }
 
   /* Sanity check MJD is what we think it should be.  Dates in
@@ -142,7 +142,7 @@ int iers_open (struct iers_table *tab,
      level. */
   if(fabs(tab->mjd_start+tab->mjd_step*tab->lrec - mjd) > 0.01) {
     fclose(tab->fp);
-    return(-2);
+    return(-3);
   }
 
   /* Init a few things */
