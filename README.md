@@ -9,6 +9,10 @@ extra routines that do have external dependencies and are not included
 in the archive.  These are organized into one file for each external
 library.
 
+Partial Python wrappers are also included for the more useful parts of
+the library, and it can be built as a Python module by using the
+setup.py included in the source tree.
+
 This is still under active development, and has been for some time.
 It has got a bit messy and could do with a tidy.  The Makefile
 contains targets for a number of test programs, but these (and their
