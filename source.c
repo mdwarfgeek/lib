@@ -7,7 +7,7 @@
 #include "lfa.h"
 
 #define KEPLER_PREC    1.0e-13
-#define KEPLER_MAXITER 20
+#define KEPLER_MAXITER 100
 
 /* Creates source structure from star coordinates */
 
@@ -195,8 +195,8 @@ void source_elem (struct source *src,
     ma = fmod(ma, TWOPI);
 
     /* Eccentric anomaly at reference epoch: solve Kepler's equation */
-    if(ecc > 0.8)
-      ea = (M_PI * ecc + ma) / (1.0 + ecc);  /* for stability */
+    if(ecc > 0)
+      ea = ma + ecc * sin(ma);
     else
       ea = ma;
     
