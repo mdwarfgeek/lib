@@ -670,6 +670,9 @@ static PyObject *lfa_observer_update (struct lfa_observer_object *self,
 }
 
 static PyMemberDef lfa_observer_members[] = {
+  { "latitude",  T_DOUBLE, offsetof(struct lfa_observer_object, o.latitude),   0, "latitude" },
+  { "longitude", T_DOUBLE, offsetof(struct lfa_observer_object, o.longitude),  0, "longitude" },
+  { "height",    T_DOUBLE, offsetof(struct lfa_observer_object, o.height),     0, "height" },
   { "utc",  T_DOUBLE, offsetof(struct lfa_observer_object, o.utc),  0, "utc" },
   { "tt",   T_DOUBLE, offsetof(struct lfa_observer_object, o.tt),   0, "tt" },
   { "tdb",  T_DOUBLE, offsetof(struct lfa_observer_object, o.tdb),  0, "tdb" },
