@@ -767,6 +767,10 @@ void observer_obs2ast (struct observer *obs,
 
 double v_parallactic (double sinphi, double cosphi, double v[3]);
 
+/* -- pixovcirc.c: fraction of pixel inside circle -- */
+
+double pixovcirc (double x, double y, double r);
+
 /* -- prenut.c: precession and nutation -- */
 
 /* Precession and frame bias, IAU 2006, Fukushima-Williams angles */

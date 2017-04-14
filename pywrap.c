@@ -2011,6 +2011,82 @@ static PyObject *lfa_dplate (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_pixovcirc (PyObject *self,
+                                PyObject *args,
+                                PyObject *kwds) {
+  static char *kwlist[] = { "x", "y", "r", NULL };
+  PyObject *xarg, *yarg, *rarg;
+  PyObject *xarr = NULL, *yarr = NULL, *rarr = NULL;
+  double *x, *y, *r;
+
+  PyObject *outarr = NULL;
+  double *out;
+
+  int ipt, npt, nr;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "OOO", kwlist,
+                                  &xarg, &yarg, &rarg))
+    goto error;
+
+  xarr = PyArray_FROM_OTF(xarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!xarr)
+    goto error;
+
+  npt = PyArray_Size(xarr);
+
+  yarr = PyArray_FROM_OTF(yarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!yarr)
+    goto error;
+
+  if(PyArray_Size(yarr) != npt) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'y' and 'x' lengths do not match");
+    goto error;
+  }
+
+  rarr = PyArray_FROM_OTF(rarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!rarr)
+    goto error;
+
+  nr = PyArray_Size(rarr);
+
+  if(nr != 1 && nr != npt) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'r' and 'x' lengths do not match");
+    goto error;
+  }
+
+  outarr = PyArray_SimpleNew(PyArray_NDIM(xarr),
+                             PyArray_DIMS(xarr),
+                             NPY_DOUBLE);
+  if(!outarr)
+    goto error;
+
+  x = PyArray_DATA(xarr);
+  y = PyArray_DATA(yarr);
+  r = PyArray_DATA(rarr);
+  out = PyArray_DATA(outarr);
+
+  for(ipt = 0; ipt < npt; ipt++)
+    out[ipt] = pixovcirc(x[ipt], y[ipt], nr == 1 ? r[0] : r[ipt]);
+
+  Py_DECREF(xarr);
+  Py_DECREF(yarr);
+  Py_DECREF(rarr);
+
+  return(PyArray_Return((PyArrayObject *) outarr));
+
+ error:
+  Py_XDECREF(xarr);
+  Py_XDECREF(yarr);
+  Py_XDECREF(rarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) outarr);
+
+  return(NULL);
+}
+
 static PyMethodDef lfa_methods[] = {
   { "source_star_vec", (PyCFunction) lfa_source_star_vec,
     METH_VARARGS | METH_KEYWORDS,
@@ -2074,7 +2150,10 @@ static PyMethodDef lfa_methods[] = {
     "pos = mount_rp2pos(r, p, snp=0, cnp=1)" },
   { "dplate", (PyCFunction) lfa_dplate,
     METH_VARARGS | METH_KEYWORDS,
-    "tr = dplate(comx, comy, refx, refy, wt=None, ncoeff=6" },
+    "tr = dplate(comx, comy, refx, refy, wt=None, ncoeff=6)" },
+  { "pixovcirc", (PyCFunction) lfa_pixovcirc,
+    METH_VARARGS | METH_KEYWORDS,
+    "fract = pixovcirc(x, y, r)" },
   { NULL, NULL, 0, NULL }
 };
 
