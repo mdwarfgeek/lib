@@ -42,25 +42,37 @@ static int lfa_source_init (struct lfa_source_object *self,
                             "epoch",
                             NULL };
 
+  int narg, iplan;
+
   double ra, de;
   double pmra = 0, pmde = 0;
   double plx = 0, vrad = 0;
   double epoch = 2000.0;
 
-  /* Get arguments */
-  if(!PyArg_ParseTupleAndKeywords(args, kwds,
-                                  "dd|ddddd", kwlist,
-                                  &ra, &de,
-                                  &pmra, &pmde,
-                                  &plx, &vrad,
-                                  &epoch))
-    return(-1);
+  /* How many non-keyword arguments? */
+  narg = PyTuple_Size(args);
 
-  source_star(&(self->s),
-              ra, de,
-              pmra, pmde,
-              plx, vrad,
-              epoch);
+  if(narg == 1) {
+    if(!PyArg_ParseTuple(args, "i", &iplan))
+      return(-1);
+
+    self->s.type = iplan;
+  }
+  else {
+    if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                    "dd|ddddd", kwlist,
+                                    &ra, &de,
+                                    &pmra, &pmde,
+                                    &plx, &vrad,
+                                    &epoch))
+      return(-1);
+    
+    source_star(&(self->s),
+                ra, de,
+                pmra, pmde,
+                plx, vrad,
+                epoch);
+  }
 
   return(0);
 }
