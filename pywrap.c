@@ -2099,6 +2099,65 @@ static PyObject *lfa_pixovcirc (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_skylevel_image (struct lfa_ap_object *self,
+                                     PyObject *args,
+                                     PyObject *kwds) {
+  static char *kwlist[] = { "map",
+                            "mask",
+                            "clip_low",
+                            "clip_high",
+                            NULL };
+  PyObject *maparg;
+  PyObject *maskarg = NULL;
+  float clip_low = -FLT_MAX;
+  float clip_high = 3.0;
+  float skylev, skynoise;
+
+  PyObject *maparr = NULL;
+  PyObject *maskarr = NULL;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O|Off", kwlist,
+                                  &maparg,
+                                  &maskarg,
+                                  &clip_low,
+                                  &clip_high))
+    return(NULL);
+
+  maparr = PyArray_FROM_OTF(maparg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!maparr)
+    goto error;
+
+  if(maskarg) {
+    maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!maskarr)
+      goto error;
+
+    if(PyArray_Size(maskarr) < PyArray_Size(maparr)) {
+      PyErr_SetString(PyExc_IndexError, "mask too small");
+      goto error;
+    }
+  }
+
+  skylevel_image(PyArray_DATA(maparr),
+                 maskarr ? PyArray_DATA(maskarr) : NULL,
+                 PyArray_Size(maparr),
+                 clip_low, clip_high,
+                 &skylev, &skynoise);
+
+  Py_DECREF(maparr);
+  Py_XDECREF(maskarr);
+
+  return(Py_BuildValue("ff", skylev, skynoise));
+
+ error:
+  Py_XDECREF(maparr);
+  Py_XDECREF(maskarr);
+
+  return(NULL);
+}
+
 static PyMethodDef lfa_methods[] = {
   { "source_star_vec", (PyCFunction) lfa_source_star_vec,
     METH_VARARGS | METH_KEYWORDS,
@@ -2166,6 +2225,9 @@ static PyMethodDef lfa_methods[] = {
   { "pixovcirc", (PyCFunction) lfa_pixovcirc,
     METH_VARARGS | METH_KEYWORDS,
     "fract = pixovcirc(x, y, r)" },
+  { "skylevel_image", (PyCFunction) lfa_skylevel_image,
+    METH_VARARGS | METH_KEYWORDS,
+    "skylev, skynoise = skylevel_image(map, mask=None, clip_low=-FLT_MAX, clip_high=3)" },
   { NULL, NULL, 0, NULL }
 };
 
