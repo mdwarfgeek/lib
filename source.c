@@ -88,13 +88,6 @@ void source_star_vec (struct source *src,
 
 /* Creates source structure from Keplerian osculating elements */
 
-#ifdef TEST
-void sla_el2ue_ (double *date, int *jform,
-		 double *epoch, double *orbinc, double *anode, double *perih,
-		 double *aorq, double *e, double *aorl, double *dm,
-		 double *u, int *jstat);
-#endif
-
 void source_elem (struct source *src,
 		  unsigned char eltype,
 		  double epoch,
@@ -105,39 +98,20 @@ void source_elem (struct source *src,
 		  double ecc,
 		  double lm,
 		  double nn) {
-  double tmp[3][3], rot[3][3], r[3], v[3];
-  double ma, ea, se, ce, st, ct, f, df, delta;
+  double mtmp[3][3], rot[3][3], r[3], v[3];
+  double ma, ea, tmp, alpha, beta, z, ste, se, ce, st, ct, f, df, delta;
   double sef, fac, raq;
   int i;
-
-#ifdef TEST
-  double u[13];
-  int jform, jstat;
-
-  jform = eltype;
-
-  sla_el2ue_(&epoch, &jform,
-	     &epoch, &incl, &anode, &longperi,
-	     &aq, &ecc, &lm, &nn,
-	     u, &jstat);
-
-  fprintf(stderr,
-	  "SLALIB universal elements: r_0=(%le, %le, %le) v_0=(%le, %le, %le) alpha=%le r_0=%le\n",
-	  u[3], u[4], u[5],
-	  u[6]/58.1324409, u[7]/58.1324409, u[8]/58.1324409,  /* canonical to normal */
-	  -u[1]/(58.1324409*58.1324409),
-	  u[9]);
-#endif
 
   /* Set source type */
   src->type = SOURCE_ELEM;
 
   /* Generate rotation matrix */
-  m_identity(tmp);
-  euler_rotate(tmp, 3, -longperi);
-  euler_rotate(tmp, 1, -incl);
-  euler_rotate(tmp, 3, -anode);
-  m_x_m(ecl2gcrs, tmp, rot);
+  m_identity(mtmp);
+  euler_rotate(mtmp, 3, -longperi);
+  euler_rotate(mtmp, 1, -incl);
+  euler_rotate(mtmp, 3, -anode);
+  m_x_m(ecl2gcrs, mtmp, rot);
 
   /* Reference epoch */
   src->ref_tdb = epoch;
@@ -191,28 +165,61 @@ void source_elem (struct source *src,
       nn = src->sqrtalpha * raq;
     }
 
-    /* Reduce mean anomaly */
-    ma = fmod(ma, TWOPI);
+    /* Reduce mean anomaly to [-pi, pi] */
+    ma = remainder(ma, TWOPI);
 
-    /* Eccentric anomaly at reference epoch: solve Kepler's equation */
-    if(ecc > 0)
-      ea = ma + ecc * sin(ma);
-    else
+    /* Eccentric or circular? */
+    if(ecc > 0) {
+      /* For eccentric orbits, use cubic approximation from Mikkola (1987)
+         to provide initial guess of eccentric anomaly. */
+
+      /* Eq. 9a */
+      tmp = 1.0 / (4 * ecc + 0.5);
+
+      alpha = (1.0 - ecc) * tmp;
+      beta = 0.5 * ma * tmp;
+      
+      /* Eq. 9b */
+      z = cbrt(beta + copysign(sqrt(beta*beta + alpha*alpha*alpha), beta));
+      
+      /* Eq. 9c: initial value of sin(E/3) */
+      ste = z - alpha / z;
+      
+      /* Eq. 7: 5th order correction term */
+      ste -= 0.078 * ste*ste*ste*ste*ste / (1.0 + ecc);
+      
+      /* Eq. 8: eccentric anomaly */
+      ea = ma + ecc * ste * (3.0 - 4.0 * ste*ste);
+
+      /* Refine solution of Kepler's equation using Newton's method */
+      for(i = 0; i < KEPLER_MAXITER; i++) {
+        inline_bare_sincos(ea, se, ce);
+        
+        f = ea - ecc * se - ma;
+        df = 1.0 - ecc * ce;
+        delta = f / df;
+        
+        ea -= delta;
+        
+        if(fabs(delta) < KEPLER_PREC) {
+          /* I think that's enough... */
+          break;
+        }
+      }
+      
+      if(i >= KEPLER_MAXITER)
+        fprintf(stderr, "kepler: iteration limit reached\n");
+      
+      inline_bare_sincos(ea, se, ce);
+      
+      df = 1.0 - ecc * ce;  /* = rv, used later */
+    }
+    else {
       ea = ma;
     
-    for(i = 0; i < KEPLER_MAXITER; i++) {
       inline_bare_sincos(ea, se, ce);
 
-      f = ea - ecc * se - ma;
-      df = 1.0 - ecc * ce;
-      delta = f / df;
-      
-      if(fabs(delta) < KEPLER_PREC) {
-	/* I think that's enough... */
-	break;
-      }
-
-      ea -= delta;
+      df = 1.0;
     }
 
     /* Compute (r/a) times sin and cos of true anomaly at reference epoch */
@@ -361,18 +368,15 @@ void source_place (struct observer *obs,
 	
 	delta = k / dk;
 
-#ifdef TEST
-	fprintf(stderr, "iter %d: %lf %lf %lf %lf (%lf %lf %lf %lf)\n",
-		i+1, psi, k, dk, delta, c[0], c[1], c[2], c[3]);
-#endif	
+	psi -= delta;
 
 	if(fabs(delta) < KEPLER_PREC) {
 	  /* I think that's enough... */
 	  break;
 	}
-	
-	psi -= delta;
       }
+
+      stumpff(psi, src->alpha, src->sqrtalpha, c);
       
       /* Compute result */
       f = 1.0 - c[2] * src->muorref;
@@ -388,12 +392,6 @@ void source_place (struct observer *obs,
       
       for(i = 0; i < 3; i++)
 	vb[i] = f * src->ref_n[i] + g * src->ref_dndt[i];
-
-#ifdef TEST
-      fprintf(stderr,
-	      "Heliocentric state vector: (%le, %le, %le)\n",
-	      s[0], s[1], s[2]);
-#endif
 
       /* Convert to barycentric or topocentric as requested */
       if(mask & TR_PLX) {
