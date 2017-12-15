@@ -609,6 +609,10 @@ void iers_close (struct iers_table *tab);
 int iers_fetch (struct iers_table *tab, double mjd,
 		double *dut1, double *xp, double *yp, double *dxnut, double *dynut);
 
+/* -- kepler.c: solve Kepler's equation -- */
+
+double kepler (double ma, double ecc);
+
 /* -- matvec.c: matrix and vector utilities */
 
 /* Makes Euler rotation matrices about "axis" */

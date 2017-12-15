@@ -2023,6 +2023,55 @@ static PyObject *lfa_dplate (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_kepler (PyObject *self,
+                             PyObject *args,
+                             PyObject *kwds) {
+  static char *kwlist[] = { "ma", "ecc", NULL };
+  PyObject *maarg;
+  PyObject *maarr = NULL;
+  double *ma;
+  double ecc;
+
+  PyObject *eaarr = NULL;
+  double *ea;
+
+  int ipt, npt;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "Od", kwlist,
+                                  &maarg, &ecc))
+    goto error;
+
+  maarr = PyArray_FROM_OTF(maarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!maarr)
+    goto error;
+
+  npt = PyArray_Size(maarr);
+
+  eaarr = PyArray_SimpleNew(PyArray_NDIM(maarr),
+                            PyArray_DIMS(maarr),
+                            NPY_DOUBLE);
+  if(!eaarr)
+    goto error;
+
+  ma = PyArray_DATA(maarr);
+  ea = PyArray_DATA(eaarr);
+
+  for(ipt = 0; ipt < npt; ipt++)
+    ea[ipt] = kepler(ma[ipt], ecc);
+
+  Py_DECREF(maarr);
+
+  return(PyArray_Return((PyArrayObject *) eaarr));
+
+ error:
+  Py_XDECREF(maarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) eaarr);
+
+  return(NULL);
+}
+
 static PyObject *lfa_pixovcirc (PyObject *self,
                                 PyObject *args,
                                 PyObject *kwds) {
@@ -2222,6 +2271,9 @@ static PyMethodDef lfa_methods[] = {
   { "dplate", (PyCFunction) lfa_dplate,
     METH_VARARGS | METH_KEYWORDS,
     "tr = dplate(comx, comy, refx, refy, wt=None, ncoeff=6)" },
+  { "kepler", (PyCFunction) lfa_kepler,
+    METH_VARARGS | METH_KEYWORDS,
+    "ea = kepler(ma, ecc)" },
   { "pixovcirc", (PyCFunction) lfa_pixovcirc,
     METH_VARARGS | METH_KEYWORDS,
     "fract = pixovcirc(x, y, r)" },

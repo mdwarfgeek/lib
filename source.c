@@ -99,9 +99,8 @@ void source_elem (struct source *src,
 		  double lm,
 		  double nn) {
   double mtmp[3][3], rot[3][3], r[3], v[3];
-  double ma, ea, tmp, alpha, beta, z, ste, se, ce, st, ct, f, df, delta;
+  double ma, ea, se, ce, rv, st, ct;
   double sef, fac, raq;
-  int i;
 
   /* Set source type */
   src->type = SOURCE_ELEM;
@@ -165,62 +164,12 @@ void source_elem (struct source *src,
       nn = src->sqrtalpha * raq;
     }
 
-    /* Reduce mean anomaly to [-pi, pi] */
-    ma = remainder(ma, TWOPI);
+    /* Solve Kepler's equation */
+    ea = kepler(ma, ecc);
 
-    /* Eccentric or circular? */
-    if(ecc > 0) {
-      /* For eccentric orbits, use cubic approximation from Mikkola (1987)
-         to provide initial guess of eccentric anomaly. */
-
-      /* Eq. 9a */
-      tmp = 1.0 / (4 * ecc + 0.5);
-
-      alpha = (1.0 - ecc) * tmp;
-      beta = 0.5 * ma * tmp;
-      
-      /* Eq. 9b */
-      z = cbrt(beta + copysign(sqrt(beta*beta + alpha*alpha*alpha), beta));
-      
-      /* Eq. 9c: initial value of sin(E/3) */
-      ste = z - alpha / z;
-      
-      /* Eq. 7: 5th order correction term */
-      ste -= 0.078 * ste*ste*ste*ste*ste / (1.0 + ecc);
-      
-      /* Eq. 8: eccentric anomaly */
-      ea = ma + ecc * ste * (3.0 - 4.0 * ste*ste);
-
-      /* Refine solution of Kepler's equation using Newton's method */
-      for(i = 0; i < KEPLER_MAXITER; i++) {
-        inline_bare_sincos(ea, se, ce);
-        
-        f = ea - ecc * se - ma;
-        df = 1.0 - ecc * ce;
-        delta = f / df;
-        
-        ea -= delta;
-        
-        if(fabs(delta) < KEPLER_PREC) {
-          /* I think that's enough... */
-          break;
-        }
-      }
-      
-      if(i >= KEPLER_MAXITER)
-        fprintf(stderr, "kepler: iteration limit reached\n");
-      
-      inline_bare_sincos(ea, se, ce);
-      
-      df = 1.0 - ecc * ce;  /* = rv, used later */
-    }
-    else {
-      ea = ma;
+    inline_bare_sincos(ea, se, ce);
     
-      inline_bare_sincos(ea, se, ce);
-
-      df = 1.0;
-    }
+    rv = 1.0 - ecc * ce;
 
     /* Compute (r/a) times sin and cos of true anomaly at reference epoch */
     sef = sqrt(1.0 - ecc*ecc);
@@ -229,7 +178,7 @@ void source_elem (struct source *src,
     ct = ce - ecc;
 
     /* r = a (1 - e cos E) */
-    src->rref = aq * df;
+    src->rref = aq * rv;
 
     /* Position vector */
     r[0] = aq * ct;
@@ -237,7 +186,7 @@ void source_elem (struct source *src,
     r[2] = 0;
     
     /* Velocity vector */
-    fac = nn * aq / df;
+    fac = nn * aq / rv;
     
     v[0] = -fac * se;
     v[1] = fac * sef * ce;
