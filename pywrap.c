@@ -1649,6 +1649,102 @@ static PyObject *lfa_v_angle_v (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_ranorm (PyObject *self,
+                             PyObject *args,
+                             PyObject *kwds) {
+  static char *kwlist[] = { "a", NULL };
+  PyObject *aarg;
+  PyObject *aarr = NULL;
+  double *a;
+
+  PyObject *outarr = NULL;
+  double *out;
+
+  int ipt, npt;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O", kwlist,
+                                  &aarg))
+    goto error;
+
+  aarr = PyArray_FROM_OTF(aarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!aarr)
+    goto error;
+
+  npt = PyArray_Size(aarr);
+
+  outarr = PyArray_SimpleNew(PyArray_NDIM(aarr),
+                             PyArray_DIMS(aarr),
+                             NPY_DOUBLE);
+  if(!outarr)
+    goto error;
+
+  a = PyArray_DATA(aarr);
+  out = PyArray_DATA(outarr);
+
+  for(ipt = 0; ipt < npt; ipt++)
+    out[ipt] = ranorm(a[ipt]);
+
+  Py_DECREF(aarr);
+
+  return(PyArray_Return((PyArrayObject *) outarr));
+
+ error:
+  Py_XDECREF(aarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) outarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_range (PyObject *self,
+                            PyObject *args,
+                            PyObject *kwds) {
+  static char *kwlist[] = { "a", NULL };
+  PyObject *aarg;
+  PyObject *aarr = NULL;
+  double *a;
+
+  PyObject *outarr = NULL;
+  double *out;
+
+  int ipt, npt;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O", kwlist,
+                                  &aarg))
+    goto error;
+
+  aarr = PyArray_FROM_OTF(aarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!aarr)
+    goto error;
+
+  npt = PyArray_Size(aarr);
+
+  outarr = PyArray_SimpleNew(PyArray_NDIM(aarr),
+                             PyArray_DIMS(aarr),
+                             NPY_DOUBLE);
+  if(!outarr)
+    goto error;
+
+  a = PyArray_DATA(aarr);
+  out = PyArray_DATA(outarr);
+
+  for(ipt = 0; ipt < npt; ipt++)
+    out[ipt] = range(a[ipt]);
+
+  Py_DECREF(aarr);
+
+  return(PyArray_Return((PyArrayObject *) outarr));
+
+ error:
+  Py_XDECREF(aarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) outarr);
+
+  return(NULL);
+}
+
 static PyObject *lfa_date2mjd (PyObject *self,
                                PyObject *args,
                                PyObject *kwds) {
@@ -1911,6 +2007,111 @@ static PyObject *lfa_mount_rp2pos (PyObject *self,
 
  error:
   PyArray_XDECREF_ERR((PyArrayObject *) posout);
+
+  return(NULL);
+}
+
+static PyObject *lfa_refract_const (PyObject *self,
+                                    PyObject *args,
+                                    PyObject *kwds) {
+  static char *kwlist[] = { "temperat",
+                            "humidity",
+                            "pressure",
+                            "wavelength",
+                            "height",
+                            NULL };
+  double temperat, humidity, pressure, wavelength, height;
+
+  PyObject *out = NULL;
+
+  npy_intp outdim[1] = { NREFCO };
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "ddddd", kwlist,
+                                  &temperat,
+                                  &humidity,
+                                  &pressure,
+                                  &wavelength,
+                                  &height))
+    return(NULL);
+
+  out = PyArray_SimpleNew(1, outdim, NPY_DOUBLE);
+  if(!out)
+    goto error;
+
+  refract_const(temperat, humidity, pressure, wavelength,
+                height, PyArray_DATA(out));
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) out)));
+
+ error:
+  PyArray_XDECREF_ERR((PyArrayObject *) out);
+
+  return(NULL);
+}
+
+static PyObject *lfa_refract_vec (PyObject *self,
+                                  PyObject *args,
+                                  PyObject *kwds) {
+  static char *kwlist[] = { "refco",
+                            "vi",
+                            "unref",
+                            NULL };
+  PyObject *rarg, *varg;
+  int unref = 0;
+
+  PyObject *rarr = NULL, *varr = NULL;
+
+  PyObject *out = NULL;
+
+  npy_intp outdim[1] = { 3 };
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "OO|i", kwlist,
+                                  &rarg, &varg, &unref))
+    goto error;
+
+  rarr = PyArray_FROM_OTF(rarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!rarr)
+    goto error;
+
+  if(PyArray_Size(rarr) < NREFCO) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'refco' is too small");
+    goto error;
+  }
+
+  varr = PyArray_FROM_OTF(varg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!varr)
+    goto error;
+
+  if(PyArray_Size(varr) < 3) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'v' is too small");
+    goto error;
+  }
+
+  out = PyArray_SimpleNew(1, outdim, NPY_DOUBLE);
+  if(!out)
+    goto error;
+
+  refract_vec(PyArray_DATA(rarr), unref,
+              PyArray_DATA(varr), PyArray_DATA(out),
+              NULL, NULL);
+
+  Py_DECREF(rarr);
+  Py_DECREF(varr);
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) out)));
+
+ error:
+  Py_XDECREF(rarr);
+  Py_XDECREF(varr);
+  PyArray_XDECREF_ERR((PyArrayObject *) out);
 
   return(NULL);
 }
@@ -2253,6 +2454,12 @@ static PyMethodDef lfa_methods[] = {
   { "v_angle_v", (PyCFunction) lfa_v_angle_v,
     METH_VARARGS | METH_KEYWORDS,
     "angle = v_angle_v(u, v)" },
+  { "ranorm", (PyCFunction) lfa_ranorm,
+    METH_VARARGS | METH_KEYWORDS,
+    "angle = ranorm(angle)" },
+  { "range", (PyCFunction) lfa_range,
+    METH_VARARGS | METH_KEYWORDS,
+    "angle = range(angle)" },  
   { "date2mjd", (PyCFunction) lfa_date2mjd,
     METH_VARARGS | METH_KEYWORDS,
     "mjd = date2mjd(yr, mn, dy)" },
@@ -2268,6 +2475,12 @@ static PyMethodDef lfa_methods[] = {
   { "mount_rp2pos", (PyCFunction) lfa_mount_rp2pos,
     METH_VARARGS | METH_KEYWORDS,
     "pos = mount_rp2pos(r, p, snp=0, cnp=1)" },
+  { "refract_const", (PyCFunction) lfa_refract_const,
+    METH_VARARGS | METH_KEYWORDS,
+    "refco = refract_const(temperat, humidity, pressure, wavelength, height)" },
+  { "refract_vec", (PyCFunction) lfa_refract_vec,
+    METH_VARARGS | METH_KEYWORDS,
+    "vo = refract_vec(refco, vi, unref=0)" },
   { "dplate", (PyCFunction) lfa_dplate,
     METH_VARARGS | METH_KEYWORDS,
     "tr = dplate(comx, comy, refx, refy, wt=None, ncoeff=6)" },
