@@ -1785,6 +1785,32 @@ static PyObject *lfa_mjd2date (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_geoc (PyObject *self,
+                           PyObject *args,
+                           PyObject *kwds) {
+  static char *kwlist[] = { "sinphi",
+                            "cosphi",
+                            "height",
+                            NULL };
+  double sinphi, cosphi, height;
+  double u, z;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "ddd", kwlist,
+                                  &sinphi,
+                                  &cosphi,
+                                  &height))
+    goto error;
+
+  geoc(sinphi, cosphi, height, &u, &z);
+
+  return(Py_BuildValue("dd", u, z));
+
+ error:
+  return(NULL);
+}
+
 static PyObject *lfa_mount_ab2rp (PyObject *self,
                                   PyObject *args,
                                   PyObject *kwds) {
@@ -2466,6 +2492,9 @@ static PyMethodDef lfa_methods[] = {
   { "mjd2date", (PyCFunction) lfa_mjd2date,
     METH_VARARGS | METH_KEYWORDS,
     "yr, mn, dy = mjd2date(mjd)" },
+  { "geoc", (PyCFunction) lfa_geoc,
+    METH_VARARGS | METH_KEYWORDS,
+    "u, z = geoc(sinphi, cosphi, height)" },
   { "mount_ab2rp", (PyCFunction) lfa_mount_ab2rp,
     METH_VARARGS | METH_KEYWORDS,
     "pos, r, p = mount_rp2pos(aim, bore, snp=0, cnp=1, flip=0, daimdt=None)" },
