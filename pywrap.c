@@ -649,7 +649,7 @@ static PyObject *lfa_observer_refract (struct lfa_observer_object *self,
   refract_const(temperat, humidity, pressure, wavelength,
                 self->o.height, self->o.refco);
 
-
+  Py_INCREF(Py_None);
   return(Py_None);
 }
 
