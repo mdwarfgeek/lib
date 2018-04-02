@@ -110,21 +110,20 @@ int iers_open (struct iers_table *tab,
     }
     
     /* Sanity check that record lengths are the same */
-    if(strlen(buf) != tab->recsize) {
-      fclose(tab->fp);
-      return(-3);
+    if(strlen(buf) == tab->recsize) {
+      /* Column 17 blank = no prediction, so wait until it's not */
+      if(!isspace(buf[16]))
+        break;
     }
-
-    /* Column 17 blank = no prediction, so wait until it's not */
-    if(!isspace(buf[16]))
-      break;
+    /* if record lengths aren't the same, keep going back until they
+       become the same.  this should strip off any truncated records. */
 
     /* Seek back, if we can */
     tab->lrec--;
     if(tab->lrec <= 0)
       break;
 
-    rv = fseek(tab->fp, -2*tab->recsize, SEEK_CUR);
+    rv = fseek(tab->fp, ((long) tab->lrec) * tab->recsize, SEEK_SET);
     if(rv < 0) {
       fclose(tab->fp);
       return(-1);
