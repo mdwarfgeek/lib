@@ -5,8 +5,8 @@
 #include "lfa.h"
 
 /* 32-bit FNV-1a hash */
-#define HASH_INIT   2166136261
-#define HASH_PRIME  16777619
+#define HASH_INIT   UINT32_C(2166136261)
+#define HASH_PRIME  UINT32_C(16777619)
 #define HASH_ACCUM(h, b) (h) ^= (uint32_t) (b); (h) *= HASH_PRIME
 
 static inline uint32_t hash_mem (void *str, uint32_t n) {
