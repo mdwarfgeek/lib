@@ -142,8 +142,7 @@ static PyMethodDef lfa_source_methods[] = {
 };
 
 static PyTypeObject lfa_source_type = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                   /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "lfa.source",                        /* tp_name */
   sizeof(struct lfa_source_object),    /* tp_basicsize */
   0,                                   /* tp_itemsize */
@@ -299,7 +298,7 @@ static void lfa_observer_dealloc (struct lfa_observer_object *self) {
   iers_close(&(self->itab));
   dtai_free(&(self->dtab));
 
-  self->ob_type->tp_free((PyObject *) self);
+  Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 static PyObject *lfa_observer_ast2obs (struct lfa_observer_object *self,
@@ -721,8 +720,7 @@ static PyMethodDef lfa_observer_methods[] = {
 };
 
 static PyTypeObject lfa_observer_type = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                   /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "lfa.observer",                      /* tp_name */
   sizeof(struct lfa_observer_object),  /* tp_basicsize */
   0,                                   /* tp_itemsize */
@@ -781,7 +779,7 @@ static void lfa_ap_dealloc (struct lfa_ap_object *self) {
     self->allocated = 0;
   }
 
-  self->ob_type->tp_free((PyObject *) self);
+  Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 static int lfa_ap_init (struct lfa_ap_object *self,
@@ -976,8 +974,7 @@ static PyMethodDef lfa_ap_methods[] = {
 };
 
 static PyTypeObject lfa_ap_type = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                   /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "lfa.ap",                            /* tp_name */
   sizeof(struct lfa_ap_object),        /* tp_basicsize */
   0,                                   /* tp_itemsize */
@@ -2525,7 +2522,25 @@ static PyMethodDef lfa_methods[] = {
   { NULL, NULL, 0, NULL }
 };
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef lfa_mod = {
+  PyModuleDef_HEAD_INIT,
+  "lfa",        /* m_name */
+  NULL,         /* m_doc */
+  -1,           /* m_size */
+  lfa_methods,  /* m_methods */
+  NULL,         /* m_reload */
+  NULL,         /* m_traverse */
+  NULL,         /* m_clear */
+  NULL,         /* m_free */
+};
+#endif
+
+#if PY_MAJOR_VERSION >= 3
+PyMODINIT_FUNC PyInit_lfa (void) {
+#else
 PyMODINIT_FUNC initlfa (void) {
+#endif
   PyObject *m, *o;
 
 #define MAKECONST(m) { #m, m }
@@ -2634,9 +2649,13 @@ PyMODINIT_FUNC initlfa (void) {
   npy_intp matdim[2] = { 3, 3 };
 
   /* Init module */
+#if PY_MAJOR_VERSION >= 3
+  m = PyModule_Create(&lfa_mod);
+#else
   m = Py_InitModule("lfa", lfa_methods);
+#endif
   if(!m)
-    return;
+    goto error;
 
   /* Import numpy */
   import_array();
@@ -2645,7 +2664,11 @@ PyMODINIT_FUNC initlfa (void) {
   nc = sizeof(iconst) / sizeof(iconst[0]);
 
   for(c = 0; c < nc; c++) {
+#if PY_MAJOR_VERSION >= 3
+    o = PyLong_FromLong(iconst[c].value);
+#else
     o = PyInt_FromLong(iconst[c].value);
+#endif
     if(o)
       PyModule_AddObject(m, iconst[c].name, o);
   }
@@ -2674,20 +2697,30 @@ PyMODINIT_FUNC initlfa (void) {
   /* Create types */
   lfa_source_type.tp_new = PyType_GenericNew;
   if(PyType_Ready(&lfa_source_type) < 0)
-    return;
+    goto error;
 
   Py_INCREF(&lfa_source_type);
   PyModule_AddObject(m, "source", (PyObject *) &lfa_source_type);
 
   if(PyType_Ready(&lfa_observer_type) < 0)
-    return;
+    goto error;
 
   Py_INCREF(&lfa_observer_type);
   PyModule_AddObject(m, "observer", (PyObject *) &lfa_observer_type);
 
   if(PyType_Ready(&lfa_ap_type) < 0)
-    return;
+    goto error;
 
   Py_INCREF(&lfa_ap_type);
   PyModule_AddObject(m, "ap", (PyObject *) &lfa_ap_type);
+
+#if PY_MAJOR_VERSION >= 3
+  return(m);
+
+ error:
+  return(NULL);
+#else
+ error:
+  return;
+#endif
 }
