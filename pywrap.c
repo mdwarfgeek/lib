@@ -969,7 +969,7 @@ static PyMethodDef lfa_ap_methods[] = {
     "x, y, ziso, zpk, niso = source(isrc)" },
   { "ellipse", (PyCFunction) lfa_ap_ellipse,
     METH_VARARGS | METH_KEYWORDS,
-    "gfwhm, ell, spa, cps = ellipse(isrc)" },
+    "gfwhm, ell, spa, cpa = ellipse(isrc)" },
   { NULL, NULL, 0, NULL }
 };
 
@@ -2372,7 +2372,83 @@ static PyObject *lfa_pixovcirc (PyObject *self,
   return(NULL);
 }
 
-static PyObject *lfa_skylevel_image (struct lfa_ap_object *self,
+static PyObject *lfa_backremove (PyObject *self,
+                                 PyObject *args,
+                                 PyObject *kwds) {
+  static char *kwlist[] = { "map",
+                            "mask",
+                            "nbsize",
+                            NULL };
+  PyObject *maparg;
+  PyObject *maskarg = NULL;
+  int nbsize = 64;
+
+  PyObject *maparr = NULL;
+  PyObject *maskarr = NULL;
+  PyObject *outarr = NULL;
+
+  int ndim;
+  npy_intp *dims;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O|Oi", kwlist,
+                                  &maparg,
+                                  &maskarg,
+                                  &nbsize))
+    return(NULL);
+
+  maparr = PyArray_FROM_OTF(maparg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!maparr)
+    goto error;
+
+  ndim = PyArray_NDIM(maparr);
+  dims = PyArray_DIMS(maparr);
+
+  if(ndim != 2) {
+    PyErr_SetString(PyExc_IndexError, "expected 2-D map");
+    goto error;
+  }
+
+  if(maskarg) {
+    maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!maskarr)
+      goto error;
+
+    if(PyArray_Size(maskarr) < PyArray_Size(maparr)) {
+      PyErr_SetString(PyExc_IndexError, "mask too small");
+      goto error;
+    }
+  }
+
+  outarr = PyArray_SimpleNew(ndim,
+                             dims,
+                             NPY_FLOAT);
+  if(!outarr)
+    goto error;
+
+  if(backremove(PyArray_DATA(maparr),
+                maskarr ? PyArray_DATA(maskarr) : NULL,
+                PyArray_DATA(outarr),
+                dims[0], dims[1], nbsize)) {
+    PyErr_SetString(PyExc_MemoryError, "backremove");
+    goto error;
+  }
+
+  Py_DECREF(maparr);
+  Py_XDECREF(maskarr);
+
+  return(PyArray_Return((PyArrayObject *) outarr));
+
+ error:
+  Py_XDECREF(maparr);
+  Py_XDECREF(maskarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) outarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_skylevel_image (PyObject *self,
                                      PyObject *args,
                                      PyObject *kwds) {
   static char *kwlist[] = { "map",
@@ -2516,6 +2592,9 @@ static PyMethodDef lfa_methods[] = {
   { "pixovcirc", (PyCFunction) lfa_pixovcirc,
     METH_VARARGS | METH_KEYWORDS,
     "fract = pixovcirc(x, y, r)" },
+  { "backremove", (PyCFunction) lfa_backremove,
+    METH_VARARGS | METH_KEYWORDS,
+    "mapout = backremove(mapin, mask=None, nbsize=64)" },
   { "skylevel_image", (PyCFunction) lfa_skylevel_image,
     METH_VARARGS | METH_KEYWORDS,
     "skylev, skynoise = skylevel_image(map, mask=None, clip_low=-FLT_MAX, clip_high=3)" },
