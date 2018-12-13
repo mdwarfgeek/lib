@@ -2075,6 +2075,46 @@ static PyObject *lfa_refract_const (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_refract_corr (PyObject *self,
+                                   PyObject *args,
+                                   PyObject *kwds) {
+  static char *kwlist[] = { "refco",
+                            "tanz",
+                            NULL };
+  PyObject *rarg;
+
+  PyObject *rarr = NULL;
+
+  double tanz, refr, deriv;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "Od", kwlist,
+                                  &rarg, &tanz))
+    goto error;
+
+  rarr = PyArray_FROM_OTF(rarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!rarr)
+    goto error;
+
+  if(PyArray_Size(rarr) < NREFCO) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'refco' is too small");
+    goto error;
+  }
+
+  refract_corr(PyArray_DATA(rarr), tanz, &refr, &deriv);
+
+  Py_DECREF(rarr);
+
+  return(Py_BuildValue("dd", refr, deriv));
+
+ error:
+  Py_XDECREF(rarr);
+
+  return(NULL);
+}
+
 static PyObject *lfa_refract_vec (PyObject *self,
                                   PyObject *args,
                                   PyObject *kwds) {
@@ -2580,6 +2620,9 @@ static PyMethodDef lfa_methods[] = {
   { "refract_const", (PyCFunction) lfa_refract_const,
     METH_VARARGS | METH_KEYWORDS,
     "refco = refract_const(temperat, humidity, pressure, wavelength, height)" },
+  { "refract_corr", (PyCFunction) lfa_refract_corr,
+    METH_VARARGS | METH_KEYWORDS,
+    "refr, deriv = refract_corr(refco, tanz)" },
   { "refract_vec", (PyCFunction) lfa_refract_vec,
     METH_VARARGS | METH_KEYWORDS,
     "vo = refract_vec(refco, vi, unref=0)" },
