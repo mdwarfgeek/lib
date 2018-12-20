@@ -4,6 +4,8 @@
 
 #include "lfa.h"
 
+#define TINY (FLT_RADIX*DBL_EPSILON)
+
 /* Aim and boresight vectors to roll and pitch angles by decomposing
    posture matrix.  Follows Wallace (2002) equations.  Returns false
    if there were no solutions, otherwise true.  Intended for
@@ -31,7 +33,7 @@ int mount_ab2rp (double *aim, double *daimdt,
   calphsq = aim[0]*aim[0] + aim[1]*aim[1] -
     bore[1]*(2*aim[2]*snp + bore[1]) - snp*snp;
 
-  if(calphsq < 0)  /* no solutions */
+  if(calphsq < TINY)  /* no solutions */
     return(0);
 
   calph = sqrt(calphsq);
@@ -76,12 +78,8 @@ int mount_ab2rp (double *aim, double *daimdt,
   /* Time derivatives, if requested */
   if(drdt || dpdt) {
     dsalphdt = daimdt[2];
-
-    if(calph > 0)
-      dcalphdt = (aim[0]*daimdt[0] + aim[1]*daimdt[1] - 
-		  bore[1]*daimdt[2]*snp) / calph;
-    else
-      dcalphdt = 0;  /* pole */
+    dcalphdt = (aim[0]*daimdt[0] + aim[1]*daimdt[1] - 
+                bore[1]*daimdt[2]*snp) / calph;
 
     dspdt = dsalphdt*bore[0] - dcalphdt*bore[2];
     dcpdt = dsalphdt*bore[2] + dcalphdt*bore[0];

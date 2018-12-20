@@ -4,6 +4,8 @@
 
 #include "lfa.h"
 
+#define TINY (FLT_RADIX*DBL_EPSILON)
+
 void euler_rotate (double m[3][3], int axis, double angle) {
   double s, c;
 
@@ -149,7 +151,7 @@ void v_to_ad_dt (double v[3], double dvdt[3], unsigned char flip,
   double rsq;
   
   rsq = v[0]*v[0] + v[1]*v[1];
-  if(rsq > 0) {
+  if(rsq > TINY) {
     *dadt = (v[0]*dvdt[1] - v[1]*dvdt[0]) / rsq;
     *dddt = (dvdt[2]*rsq - v[2]*(v[0]*dvdt[0] + v[1]*dvdt[1]))
       / ((rsq + v[2]*v[2])*sqrt(rsq));
