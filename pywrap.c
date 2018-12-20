@@ -2121,20 +2121,21 @@ static PyObject *lfa_refract_vec (PyObject *self,
   static char *kwlist[] = { "refco",
                             "vi",
                             "unref",
+                            "dvidt",
                             NULL };
-  PyObject *rarg, *varg;
+  PyObject *rarg, *varg, *dvarg;
   int unref = 0;
 
-  PyObject *rarr = NULL, *varr = NULL;
+  PyObject *rarr = NULL, *varr = NULL, *dvarr = NULL;
 
-  PyObject *out = NULL;
+  PyObject *out = NULL, *doutdt = NULL;
 
   npy_intp outdim[1] = { 3 };
 
   /* Get arguments */
   if(!PyArg_ParseTupleAndKeywords(args, kwds,
-                                  "OO|i", kwlist,
-                                  &rarg, &varg, &unref))
+                                  "OO|iO", kwlist,
+                                  &rarg, &varg, &unref, &dvarg))
     goto error;
 
   rarr = PyArray_FROM_OTF(rarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
@@ -2157,24 +2158,52 @@ static PyObject *lfa_refract_vec (PyObject *self,
     goto error;
   }
 
+  if(dvarg) {
+    dvarr = PyArray_FROM_OTF(dvarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!dvarr)
+      goto error;
+
+    if(PyArray_Size(dvarr) < 3) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'dvdt' is too small");
+      goto error;
+    }
+  }
+
   out = PyArray_SimpleNew(1, outdim, NPY_DOUBLE);
   if(!out)
     goto error;
 
+  if(dvarg) {
+    doutdt = PyArray_SimpleNew(1, outdim, NPY_DOUBLE);
+    if(!doutdt)
+      goto error;
+  }
+
   refract_vec(PyArray_DATA(rarr), unref,
               PyArray_DATA(varr), PyArray_DATA(out),
-              NULL, NULL);
+              dvarg ? PyArray_DATA(dvarr) : NULL,
+              dvarg ? PyArray_DATA(doutdt) : NULL);
 
   Py_DECREF(rarr);
   Py_DECREF(varr);
+  if(dvarg)
+    Py_DECREF(dvarr);
 
-  return(Py_BuildValue("N",
-                       PyArray_Return((PyArrayObject *) out)));
+  if(dvarg)
+    return(Py_BuildValue("NN",
+                         PyArray_Return((PyArrayObject *) out),
+                         PyArray_Return((PyArrayObject *) doutdt)));
+  else
+    return(Py_BuildValue("N",
+                         PyArray_Return((PyArrayObject *) out)));
 
  error:
   Py_XDECREF(rarr);
   Py_XDECREF(varr);
+  Py_XDECREF(dvarr);
   PyArray_XDECREF_ERR((PyArrayObject *) out);
+  PyArray_XDECREF_ERR((PyArrayObject *) doutdt);
 
   return(NULL);
 }
