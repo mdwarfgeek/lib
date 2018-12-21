@@ -2123,7 +2123,7 @@ static PyObject *lfa_refract_vec (PyObject *self,
                             "unref",
                             "dvidt",
                             NULL };
-  PyObject *rarg, *varg, *dvarg;
+  PyObject *rarg, *varg, *dvarg = NULL;
   int unref = 0;
 
   PyObject *rarr = NULL, *varr = NULL, *dvarr = NULL;
