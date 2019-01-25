@@ -1051,7 +1051,7 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
     goto error;
   }
 
-  if(filtmaparg) {
+  if(filtmaparg && filtmaparg != Py_None) {
     filtmaparr = PyArray_FROM_OTF(filtmaparg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!filtmaparr)
       goto error;
@@ -1062,7 +1062,7 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
     }
   }
 
-  if(maskarg) {
+  if(maskarg && maskarg != Py_None) {
     maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!maskarr)
       goto error;
@@ -2116,7 +2116,7 @@ static PyObject *lfa_mount_ab2rp (PyObject *self,
   if(!posout)
     goto error;
 
-  if(daimdtarg) {
+  if(daimdtarg && daimdtarg != Py_None) {
     daimdtarr = PyArray_FROM_OTF(daimdtarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!daimdtarr)
       goto error;
@@ -2211,7 +2211,7 @@ static PyObject *lfa_mount_pa (PyObject *self,
 
   memcpy(pos, PyArray_DATA(posarr), sizeof(pos));
 
-  if(daimpdtarg) {
+  if(daimpdtarg && daimpdtarg != Py_None) {
     daimpdtarr = PyArray_FROM_OTF(daimpdtarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!daimpdtarr)
       goto error;
@@ -2418,7 +2418,7 @@ static PyObject *lfa_refract_vec (PyObject *self,
     goto error;
   }
 
-  if(dvarg) {
+  if(dvarg && dvarg != Py_None) {
     dvarr = PyArray_FROM_OTF(dvarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!dvarr)
       goto error;
@@ -2434,7 +2434,7 @@ static PyObject *lfa_refract_vec (PyObject *self,
   if(!out)
     goto error;
 
-  if(dvarg) {
+  if(dvarr) {
     doutdt = PyArray_SimpleNew(1, outdim, NPY_DOUBLE);
     if(!doutdt)
       goto error;
@@ -2442,15 +2442,15 @@ static PyObject *lfa_refract_vec (PyObject *self,
 
   refract_vec(PyArray_DATA(rarr), unref,
               PyArray_DATA(varr), PyArray_DATA(out),
-              dvarg ? PyArray_DATA(dvarr) : NULL,
-              dvarg ? PyArray_DATA(doutdt) : NULL);
+              dvarr ? PyArray_DATA(dvarr) : NULL,
+              dvarr ? PyArray_DATA(doutdt) : NULL);
 
   Py_DECREF(rarr);
   Py_DECREF(varr);
-  if(dvarg)
+  if(dvarr)
     Py_DECREF(dvarr);
 
-  if(dvarg)
+  if(dvarr)
     return(Py_BuildValue("NN",
                          PyArray_Return((PyArrayObject *) out),
                          PyArray_Return((PyArrayObject *) doutdt)));
@@ -2533,7 +2533,7 @@ static PyObject *lfa_dplate (PyObject *self,
     goto error;
   }
 
-  if(wtarg) {
+  if(wtarg && wtarg != Py_None) {
     wtarr = PyArray_FROM_OTF(wtarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!wtarr)
       goto error;
@@ -2739,7 +2739,7 @@ static PyObject *lfa_backremove (PyObject *self,
     goto error;
   }
 
-  if(maskarg) {
+  if(maskarg && maskarg != Py_None) {
     maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!maskarr)
       goto error;
@@ -2807,7 +2807,7 @@ static PyObject *lfa_skylevel_image (PyObject *self,
   if(!maparr)
     goto error;
 
-  if(maskarg) {
+  if(maskarg && maskarg != Py_None) {
     maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!maskarr)
       goto error;
