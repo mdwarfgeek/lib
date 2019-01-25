@@ -31,6 +31,7 @@ struct lfa_ap_object {
   PyObject_HEAD
   int allocated;
   struct ap ap;
+  PyArray_Descr *dtype;
 };
 
 static int lfa_source_init (struct lfa_source_object *self,
@@ -776,10 +777,114 @@ static PyObject *lfa_ap_new (PyTypeObject *type,
 static void lfa_ap_dealloc (struct lfa_ap_object *self) {
   if(self->allocated) {
     ap_free(&(self->ap));
+    Py_DECREF(self->dtype);
     self->allocated = 0;
   }
 
   Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
+/* C preprocessor stringification of a macro requires an additional
+   layer of expansion, so we need to define two macros to achieve it. */
+#undef mstrify
+#undef strify
+
+#define mstrify(x) strify(x)
+#define strify(x) #x
+
+static PyArray_Descr *lfa_ap_build_descr (void) {
+  PyObject *names = (PyObject *) NULL;
+  PyObject *formats = (PyObject *) NULL;
+  PyObject *offsets = (PyObject *) NULL;
+  PyObject *d = (PyObject *) NULL;
+  PyArray_Descr *dtype = (PyArray_Descr *) NULL;
+  PyObject *o;
+
+  struct {
+    char *name;
+    char *format;
+    size_t offset;
+  } members[] = {
+    { "x", "f8", offsetof(struct ap_source, x) },
+    { "y", "f8", offsetof(struct ap_source, y) },
+    { "sxx", "f8", offsetof(struct ap_source, sxx) },
+    { "syy", "f8", offsetof(struct ap_source, syy) },
+    { "sxy", "f8", offsetof(struct ap_source, sxy) },
+    { "ziso", "f8", offsetof(struct ap_source, ziso) },
+    { "zpk", "f8", offsetof(struct ap_source, zpk) },
+    { "areal", mstrify(AP_NAREAL) "i4", offsetof(struct ap_source, areal) },
+    { "bb", "4i4", offsetof(struct ap_source, areal) },
+    { "flags", "B", offsetof(struct ap_source, flags) },
+  };
+
+  int imemb, nmemb;
+
+  /* Create lists */
+  nmemb = sizeof(members) / sizeof(members[0]);
+
+  names = PyList_New(nmemb);
+  formats = PyList_New(nmemb);
+  offsets = PyList_New(nmemb);
+  if(!names || !formats || !offsets)
+    goto error;
+
+  /* Populate */
+  for(imemb = 0; imemb < nmemb; imemb++) {
+    o = PyString_FromString(members[imemb].name);
+    if(!o)
+      goto error;
+
+    PyList_SetItem(names, imemb, o);  /* list takes over our ref to o */
+
+    o = PyString_FromString(members[imemb].format);
+    if(!o)
+      goto error;
+
+    PyList_SetItem(formats, imemb, o);
+
+    o = PyInt_FromSize_t(members[imemb].offset);
+    if(!o)
+      goto error;
+
+    PyList_SetItem(offsets, imemb, o);
+  }
+
+  /* Create dictionary */
+  d = PyDict_New();
+  if(!d)
+    goto error;
+
+  PyDict_SetItemString(d, "names", names);  /* does not take over our ref */
+  Py_DECREF(names);                         /* so we have to do this */
+
+  PyDict_SetItemString(d, "formats", formats);
+  Py_DECREF(formats);
+
+  PyDict_SetItemString(d, "offsets", offsets);
+  Py_DECREF(offsets);
+
+  o = PyInt_FromSize_t(sizeof(struct ap_source));
+  if(!o)
+    goto error;
+
+  PyDict_SetItemString(d, "itemsize", o);
+  Py_DECREF(o);
+
+  /* Convert to descriptor */
+  if(PyArray_DescrConverter(d, &dtype) != NPY_SUCCEED)
+    goto error;
+
+  Py_DECREF(d);
+
+  return(dtype);
+
+ error:
+  Py_XDECREF(names);
+  Py_XDECREF(formats);
+  Py_XDECREF(offsets);
+  Py_XDECREF(d);
+
+  return(NULL);
 }
 
 static int lfa_ap_init (struct lfa_ap_object *self,
@@ -801,7 +906,103 @@ static int lfa_ap_init (struct lfa_ap_object *self,
     return(-1);
   }
 
+  self->dtype = lfa_ap_build_descr();
+  if(!self->dtype) {
+    ap_free(&(self->ap));
+    return(-1);
+  }
+
   self->allocated = 1;
+
+  return(0);
+}
+
+/* In order to avoid leaking source lists when we wrap them in numpy
+   arrays, we need to create an object to "own" the source list. */
+
+struct lfa_ap_source_list_object {
+  PyObject_HEAD
+  struct ap_source *list;
+  int nlist;
+};
+
+static PyObject *lfa_ap_source_list_new (PyTypeObject *type,
+                                         PyObject *args,
+                                         PyObject *kwds) {
+  struct lfa_ap_source_list_object *self = NULL;
+
+  /* Allocate */
+  self = (struct lfa_ap_source_list_object *) type->tp_alloc(type, 0);
+  if(self) {
+    self->list = NULL;
+    self->nlist = 0;
+  }
+
+  return((PyObject *) self);
+}
+
+static void lfa_ap_source_list_dealloc (struct lfa_ap_source_list_object *self) {
+  if(self->list) {
+    free(self->list);
+    self->list = NULL;
+    self->nlist = 0;
+  }
+
+  Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
+static PyTypeObject lfa_ap_source_list_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  "lfa.ap.",                    /* tp_name */
+  sizeof(struct lfa_ap_source_list_object),  /* tp_basicsize */
+  0,                                         /* tp_itemsize */
+  (destructor) lfa_ap_source_list_dealloc,   /* tp_dealloc */
+  0,                                         /* tp_print */
+  0,                                         /* tp_getattr */
+  0,                                         /* tp_setattr */
+  0,                                         /* tp_compare */
+  0,                                         /* tp_repr */
+  0,                                         /* tp_as_number */
+  0,                                         /* tp_as_sequence */
+  0,                                         /* tp_as_mapping */
+  0,                                         /* tp_hash */
+  0,                                         /* tp_call */
+  0,                                         /* tp_str */
+  0,                                         /* tp_getattro */
+  0,                                         /* tp_setattro */
+  0,                                         /* tp_as_buffer */
+  Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
+  "ap source list",                          /* tp_doc */
+  0,                                         /* tp_traverse */
+  0,                                         /* tp_clear */
+  0,                                         /* tp_richcompare */
+  0,                                         /* tp_weaklistoffset */
+  0,                                         /* tp_iter */
+  0,                                         /* tp_iternext */
+  0,                                         /* tp_methods */
+  0,                                         /* tp_members */
+  0,                                         /* tp_getset */
+  0,                                         /* tp_base */
+  0,                                         /* tp_dict */
+  0,                                         /* tp_descr_get */
+  0,                                         /* tp_descr_set */
+  0,                                         /* tp_dictoffset */
+  0,                                         /* tp_init */
+  0,                                         /* tp_alloc */
+  lfa_ap_source_list_new                     /* tp_new */
+};
+
+static int lfa_ap_image_output (struct ap *ap, struct ap_source *obj,
+                                void *data) {
+  struct lfa_ap_source_list_object *h
+    = (struct lfa_ap_source_list_object *) data;
+
+  h->list = realloc(h->list, (h->nlist+1) * sizeof(struct ap_source));
+  if(!h->list)
+    return(-1);
+
+  memcpy(&(h->list[h->nlist]), obj, sizeof(struct ap_source));
+  h->nlist++;
 
   return(0);
 }
@@ -825,6 +1026,10 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
   PyObject *maparr = NULL;
   PyObject *filtmaparr = NULL;
   PyObject *maskarr = NULL;
+
+  struct lfa_ap_source_list_object *slist = NULL;
+  npy_intp outdim[1] = { 0 };
+  PyObject *result = NULL;
 
   /* Get arguments */
   if(!PyArg_ParseTupleAndKeywords(args, kwds,
@@ -868,6 +1073,16 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
     }
   }
 
+  /* Create source list object */
+  slist = PyObject_New(struct lfa_ap_source_list_object,
+                       &lfa_ap_source_list_type);
+  if(!slist)
+    goto error;
+
+  /* Hook it into output */
+  self->ap.output = lfa_ap_image_output;
+  self->ap.output_user_data = (void *) slist;
+
   if(ap_image(&(self->ap),
               PyArray_DATA(maparr),
               filtmaparr ? PyArray_DATA(filtmaparr) : NULL,
@@ -881,43 +1096,36 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
   Py_XDECREF(filtmaparr);
   Py_XDECREF(maskarr);
 
-  return(Py_BuildValue("i", self->ap.nsources));
+  /* Create result array.  This steals a reference to "dtype",
+     so we need to get one to hand over.  The memory buffer for
+     the source list is owned by "slist" */
+  outdim[0] = slist->nlist;
+
+  Py_INCREF(self->dtype);
+  result = PyArray_NewFromDescr(&PyArray_Type,
+                                self->dtype,
+                                1, outdim, NULL,
+                                slist->list, 0,
+                                NULL);
+  if(!result) {
+    Py_DECREF(self->dtype);
+    goto error;
+  }
+
+  /* Tell numpy who owns the memory.  This steals our reference to the
+     source list, so we don't need to decref it. */
+  PyArray_BASE((PyArrayObject *) result) = (PyObject *) slist;
+
+  /* Finally we can return the result */
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) result)));
 
  error:
   Py_XDECREF(maparr);
   Py_XDECREF(filtmaparr);
   Py_XDECREF(maskarr);
-
-  return(NULL);
-}
-
-static PyObject *lfa_ap_source (struct lfa_ap_object *self,
-                                PyObject *args,
-                                PyObject *kwds) {
-  static char *kwlist[] = { "isrc",
-                            NULL };
-
-  int isrc;
-  struct ap_source *src;
-
-  /* Get arguments */
-  if(!PyArg_ParseTupleAndKeywords(args, kwds,
-                                  "i", kwlist,
-                                  &isrc))
-    return(NULL);
-
-  if(!self->allocated ||
-     isrc < 0 ||
-     isrc >= self->ap.nsources) {
-    PyErr_SetString(PyExc_IndexError, "isrc out of range");
-    goto error;
-  }
-
-  src = self->ap.sources + isrc;
-
-  return(Py_BuildValue("ddddi", src->x, src->y, src->ziso, src->zpk, src->areal[0]));
-
- error:
+  Py_XDECREF((PyObject *) slist);
+  PyArray_XDECREF_ERR((PyArrayObject *) result);
 
   return(NULL);
 }
@@ -925,33 +1133,88 @@ static PyObject *lfa_ap_source (struct lfa_ap_object *self,
 static PyObject *lfa_ap_ellipse (struct lfa_ap_object *self,
                                  PyObject *args,
                                  PyObject *kwds) {
-  static char *kwlist[] = { "isrc",
+  static char *kwlist[] = { "source",
                             NULL };
 
-  int isrc;
-  struct ap_source *src;
-  double gfwhm, ell, spa, cpa;
+  PyObject *srcarg;
+  PyObject *srcarr = NULL;
+  struct ap_source *srclist;
+
+  PyObject *gfwhmout = NULL;
+  PyObject *ellout = NULL;
+  PyObject *spaout = NULL;
+  PyObject *cpaout = NULL;
+  double *gfwhm, *ell, *spa, *cpa;
+
+  int i, n;
 
   /* Get arguments */
   if(!PyArg_ParseTupleAndKeywords(args, kwds,
-                                  "i", kwlist,
-                                  &isrc))
+                                  "O", kwlist,
+                                  &srcarg))
     return(NULL);
 
-  if(!self->allocated ||
-     isrc < 0 ||
-     isrc >= self->ap.nsources) {
-    PyErr_SetString(PyExc_IndexError, "isrc out of range");
+  /* Extract array.  This steals a reference to "dtype",
+     so we need to get one to hand over. */
+  Py_INCREF(self->dtype);
+  srcarr = PyArray_FromAny(srcarg, self->dtype, 0, 0,
+                           NPY_IN_ARRAY | NPY_FORCECAST, NULL);
+  if(!srcarr) {
+    Py_DECREF(self->dtype);
     goto error;
   }
 
-  src = self->ap.sources + isrc;
+  /* Create outputs */
+  gfwhmout = PyArray_SimpleNew(PyArray_NDIM(srcarr),
+                               PyArray_DIMS(srcarr),
+                               NPY_DOUBLE);
+  if(!gfwhmout)
+    goto error;
 
-  ap_ellipse(src, &gfwhm, &ell, &spa, &cpa);
+  ellout = PyArray_SimpleNew(PyArray_NDIM(srcarr),
+                             PyArray_DIMS(srcarr),
+                             NPY_DOUBLE);
+  if(!ellout)
+    goto error;
 
-  return(Py_BuildValue("dddd", gfwhm, ell, spa, cpa));
+  spaout = PyArray_SimpleNew(PyArray_NDIM(srcarr),
+                               PyArray_DIMS(srcarr),
+                               NPY_DOUBLE);
+  if(!spaout)
+    goto error;
+
+  cpaout = PyArray_SimpleNew(PyArray_NDIM(srcarr),
+                               PyArray_DIMS(srcarr),
+                               NPY_DOUBLE);
+  if(!cpaout)
+    goto error;
+
+  n = PyArray_SIZE(srcarr);
+  srclist = PyArray_DATA(srcarr);
+
+  gfwhm = PyArray_DATA(gfwhmout);
+  ell = PyArray_DATA(ellout);
+  spa = PyArray_DATA(spaout);
+  cpa = PyArray_DATA(cpaout);
+
+  for(i = 0; i < n; i++)
+    ap_ellipse(&(srclist[i]),
+               &(gfwhm[i]), &(ell[i]), &(spa[i]), &(cpa[i]));
+
+  Py_DECREF(srcarr);
+
+  return(Py_BuildValue("NNNN",
+                       PyArray_Return((PyArrayObject *) gfwhmout),
+                       PyArray_Return((PyArrayObject *) ellout),
+                       PyArray_Return((PyArrayObject *) spaout),
+                       PyArray_Return((PyArrayObject *) cpaout)));
 
  error:
+  Py_XDECREF(srcarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) gfwhmout);
+  PyArray_XDECREF_ERR((PyArrayObject *) ellout);
+  PyArray_XDECREF_ERR((PyArrayObject *) spaout);
+  PyArray_XDECREF_ERR((PyArrayObject *) cpaout);
 
   return(NULL);
 }
@@ -963,13 +1226,10 @@ static PyMemberDef lfa_ap_members[] = {
 static PyMethodDef lfa_ap_methods[] = {
   { "image", (PyCFunction) lfa_ap_image,
     METH_VARARGS | METH_KEYWORDS,
-    "nsources = image(map, minpix, sky, thresh)" },
-  { "source", (PyCFunction) lfa_ap_source,
-    METH_VARARGS | METH_KEYWORDS,
-    "x, y, ziso, zpk, niso = source(isrc)" },
+    "sources = image(map, minpix, sky, thresh)" },
   { "ellipse", (PyCFunction) lfa_ap_ellipse,
     METH_VARARGS | METH_KEYWORDS,
-    "gfwhm, ell, spa, cpa = ellipse(isrc)" },
+    "gfwhm, ell, spa, cpa = ellipse(source)" },
   { NULL, NULL, 0, NULL }
 };
 
@@ -2858,6 +3118,9 @@ PyMODINIT_FUNC initlfa (void) {
 
   Py_INCREF(&lfa_observer_type);
   PyModule_AddObject(m, "observer", (PyObject *) &lfa_observer_type);
+
+  if(PyType_Ready(&lfa_ap_source_list_type) < 0)
+    goto error;
 
   if(PyType_Ready(&lfa_ap_type) < 0)
     goto error;
