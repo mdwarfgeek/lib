@@ -953,7 +953,7 @@ static void lfa_ap_source_list_dealloc (struct lfa_ap_source_list_object *self) 
 
 static PyTypeObject lfa_ap_source_list_type = {
   PyVarObject_HEAD_INIT(NULL, 0)
-  "lfa.ap.",                    /* tp_name */
+  "lfa.ap.source_list",                      /* tp_name */
   sizeof(struct lfa_ap_source_list_object),  /* tp_basicsize */
   0,                                         /* tp_itemsize */
   (destructor) lfa_ap_source_list_dealloc,   /* tp_dealloc */
@@ -1074,10 +1074,13 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
   }
 
   /* Create source list object */
-  slist = PyObject_New(struct lfa_ap_source_list_object,
-                       &lfa_ap_source_list_type);
+  slist = (struct lfa_ap_source_list_object *)
+    lfa_ap_source_list_type.tp_alloc(&lfa_ap_source_list_type, 0);
   if(!slist)
     goto error;
+
+  slist->list = NULL;
+  slist->nlist = 0;
 
   /* Hook it into output */
   self->ap.output = lfa_ap_image_output;
