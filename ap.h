@@ -18,6 +18,13 @@ struct ap_pixel {
   int y;
 };
 
+struct ap_pixlist {
+  double rsq;
+  double x;
+  double y;
+  double z;
+};
+
 struct ap_source {
   /* 1st moments, centre of first pixel is 1,1 as imcore */
   double x;
@@ -33,6 +40,9 @@ struct ap_source {
 
   /* Peak height above sky */
   double zpk;
+
+  /* Half flux diameter */
+  double hfd;
 
   /* Areal profiles at 1, 2, 4, ... times threshold above sky */
   int areal[AP_NAREAL];
@@ -62,6 +72,9 @@ struct ap {
   int nfree_pixels;
 
   int *line_parents;
+
+  struct ap_pixlist *pixlist;
+  int nalloc_pixlist;
 
   struct ap_source *sources;
   int nsources;

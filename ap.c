@@ -1,14 +1,17 @@
 #include <stdlib.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
 
 #include "ap.h"
+#include "lfa.h"
 
 /* Extend arrays by this amount at a time */
 #define NEXTRA_PARENTS  1024
 #define NEXTRA_PIXELS   8192
 #define NEXTRA_SOURCES  1024
+#define NEXTRA_PIXLIST  1024
 
 /* Some macros to save tedious typing and long lines */
 #undef ALLOC
@@ -58,6 +61,12 @@ int ap_init (struct ap *ap, int nx, int ny) {
   if(!ap->line_parents)
     goto error;
 
+  ALLOC(ap->pixlist, NEXTRA_PIXLIST, struct ap_pixlist);
+  if(!ap->pixlist)
+    goto error;
+
+  ap->nalloc_pixlist = NEXTRA_PIXLIST;
+
   ALLOC(ap->sources, NEXTRA_SOURCES, struct ap_source);
   if(!ap->sources)
     goto error;
@@ -89,6 +98,8 @@ void ap_free (struct ap *ap) {
     free((void *) ap->free_pixels);
   if(ap->line_parents)
     free((void *) ap->line_parents);
+  if(ap->pixlist)
+    free((void *) ap->pixlist);
   if(ap->sources)
     free((void *) ap->sources);
 }
@@ -381,10 +392,14 @@ static int ap_params (struct ap *ap,
                       int parent) {
   int ipix, ix, p;
   int xmin, xmax, ymin, ymax;
+  int ipixlist, npixlist;
   double x, y, z;
   double sx, sy, sxx, syy, sxy, sz, zmax;
   int areal[AP_NAREAL], b, as;
   unsigned char flags;
+
+  double dx, dy, halfflux, shf, rinn, rout;
+  struct ap_pixlist pltmp;
 
   struct ap_source *obj, objbuf;
 
@@ -410,6 +425,8 @@ static int ap_params (struct ap *ap,
   xmax = 0;
   ymin = ap->ny-1;
   ymax = 0;
+
+  npixlist = 0;
 
   for(ipix = ap->parents[parent].first;
       ipix >= 0;
@@ -442,6 +459,24 @@ static int ap_params (struct ap *ap,
         /* Accumulate peak height */
         if(z > zmax)
           zmax = z;
+
+        /* Allocate more pixel list elements for HFD calculation if needed */
+        if(npixlist >= ap->nalloc_pixlist) {
+          /* Allocate more */
+          EXTEND(ap->pixlist,
+                 ap->nalloc_pixlist, NEXTRA_PIXLIST,
+                 struct ap_pixlist);
+          if(!ap->pixlist)
+            goto error;
+          
+          ap->nalloc_pixlist += NEXTRA_PIXLIST;
+        }
+        
+        /* Add to pixel list */
+        ap->pixlist[npixlist].x = x;
+        ap->pixlist[npixlist].y = y;
+        ap->pixlist[npixlist].z = z;
+        npixlist++;
         
         /* Accumulate areal profiles.  We need only fill in the highest
            this object contributes to, and then sum down later. */
@@ -512,6 +547,38 @@ static int ap_params (struct ap *ap,
     /* Isophotal flux, peak height */
     obj->ziso = sz;
     obj->zpk = zmax;
+
+    /* HFD calculation: make list of pixels belonging to this source
+       sorted by radius measured from centre of source. */
+    for(ipixlist = 0; ipixlist < npixlist; ipixlist++) {
+      dx = ap->pixlist[ipixlist].x - obj->x;
+      dy = ap->pixlist[ipixlist].y - obj->y;
+      ap->pixlist[ipixlist].rsq = dx*dx + dy*dy;
+    }
+
+    dquicksort_gen(ap->pixlist, &pltmp, npixlist,
+                   sizeof(struct ap_pixlist),
+                   offsetof(struct ap_pixlist, rsq));
+
+    /* Locate pixel where cumulative flux summing from the centre
+       passes through half of the isophotal flux. */
+    halfflux = 0.5*sz;
+
+    shf = 0;
+    for(ipixlist = 0; ipixlist < npixlist && shf < halfflux; ipixlist++)
+      shf += ap->pixlist[ipixlist].z;
+
+    /* Interpolate result */
+    if(ipixlist > 0 && ipixlist < npixlist) {
+      rinn = sqrt(ap->pixlist[ipixlist-1].rsq);
+      rout = sqrt(ap->pixlist[ipixlist].rsq);
+      z = ap->pixlist[ipixlist-1].z;
+
+      obj->hfd = 2.0 * (rinn * (shf-halfflux) +
+                        rout * (halfflux+z-shf)) / z;
+    }
+    else
+      obj->hfd = 0.0;
 
     /* Areal profiles */
     for(b = 0; b < AP_NAREAL; b++)

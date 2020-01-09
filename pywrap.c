@@ -812,6 +812,7 @@ static PyArray_Descr *lfa_ap_build_descr (void) {
     { "sxy", "f8", offsetof(struct ap_source, sxy) },
     { "ziso", "f8", offsetof(struct ap_source, ziso) },
     { "zpk", "f8", offsetof(struct ap_source, zpk) },
+    { "hfd", "f8", offsetof(struct ap_source, hfd) },
     { "areal", mstrify(AP_NAREAL) "i4", offsetof(struct ap_source, areal) },
     { "bb", "4i4", offsetof(struct ap_source, areal) },
     { "flags", "B", offsetof(struct ap_source, flags) },
