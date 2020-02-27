@@ -2298,6 +2298,49 @@ static PyObject *lfa_mount_rp2pos (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_pfb_matrix (PyObject *self,
+                                 PyObject *args,
+                                 PyObject *kwds) {
+  static char *kwlist[] = { "tt",
+                            NULL };
+  double tt, jctk;
+  double ang[NPNANG];
+  double mat[3][3];
+
+  npy_intp matdim[2] = { 3, 3 };
+  PyObject *pfbout = NULL;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "d", kwlist,
+                                  &tt))
+    goto error;
+
+  /* Create output array */
+  pfbout = PyArray_SimpleNew(2, matdim, NPY_DOUBLE);
+  if(!pfbout)
+    goto error;
+
+  /* Time argument: TT Julian centuries since 2000.0 */
+  jctk = (tt-J2K) / (100*JYR);
+
+  /* Get Fukushima-Williams angles */
+  pfb06ang(jctk, ang);
+
+  /* Form matrix */
+  makepnm(ang, mat);
+
+  memcpy(PyArray_DATA(pfbout), mat, sizeof(mat));
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) pfbout)));
+
+ error:
+  PyArray_XDECREF_ERR((PyArrayObject *) pfbout);
+
+  return(NULL);
+}
+
 static PyObject *lfa_refract_const (PyObject *self,
                                     PyObject *args,
                                     PyObject *kwds) {
@@ -2910,6 +2953,9 @@ static PyMethodDef lfa_methods[] = {
   { "mount_rp2pos", (PyCFunction) lfa_mount_rp2pos,
     METH_VARARGS | METH_KEYWORDS,
     "pos = mount_rp2pos(r, p, snp=0, cnp=1)" },
+  { "pfb_matrix", (PyCFunction) lfa_pfb_matrix,
+    METH_VARARGS | METH_KEYWORDS,
+    "mat = pfb_matrix(mjd_tt)" },
   { "refract_const", (PyCFunction) lfa_refract_const,
     METH_VARARGS | METH_KEYWORDS,
     "refco = refract_const(temperat, humidity, pressure, wavelength, height)" },
