@@ -10,6 +10,10 @@
 #include "cvtunit.h"
 #include "lfa.h"
 
+/* Macros to help me not get confused about y,x in numpy 2D arrays */
+#define DIM_Y  0
+#define DIM_X  1
+
 /* Wrappers for the observer and source structures */
 
 struct lfa_source_object {
@@ -2806,7 +2810,7 @@ static PyObject *lfa_backremove (PyObject *self,
   if(backremove(PyArray_DATA(maparr),
                 maskarr ? PyArray_DATA(maskarr) : NULL,
                 PyArray_DATA(outarr),
-                dims[0], dims[1], nbsize)) {
+                dims[DIM_X], dims[DIM_Y], nbsize)) {
     PyErr_SetString(PyExc_MemoryError, "backremove");
     goto error;
   }
