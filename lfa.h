@@ -864,6 +864,10 @@ void shuffle (struct rng_state *rs,
 
 /* -- skylevel.c -- */
 
+#define SKYLEVEL_DEFAULT_OFFSET 1024
+#define SKYLEVEL_DEFAULT_ULIM   66559
+#define SKYLEVEL_DEFAULT_SIZE   66560
+
 void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
 	       float clip_low, float clip_high,
 	       float *skylev_r, float *sigma_r);

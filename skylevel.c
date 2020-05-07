@@ -148,14 +148,14 @@ void skylevel (int *ihist, int ihmin, int ihmax, int mpix,
 void skylevel_image (float *map, unsigned char *mask, int npix,
                      float clip_low, float clip_high,
                      float *skylev, float *skynoise) {
-  int hist[65536], nhist, hmin, hmax, v, p;
+  int hist[SKYLEVEL_DEFAULT_SIZE], nhist, hmin, hmax, v, p;
   float f;
 
   /* Clear histogram */
-  for(v = 0; v <= 65535; v++)
+  for(v = 0; v <= SKYLEVEL_DEFAULT_ULIM; v++)
     hist[v] = 0;
   
-  hmin = 65535;
+  hmin = SKYLEVEL_DEFAULT_ULIM;
   hmax = 0;
 
   nhist = 0;
@@ -163,12 +163,12 @@ void skylevel_image (float *map, unsigned char *mask, int npix,
   /* Accumulate pixels */
   for(p = 0; p < npix; p++) {
     if(!mask || mask[p]) {
-      f = rintf(map[p]);
+      f = rintf(map[p]) + SKYLEVEL_DEFAULT_OFFSET;
       
       if(f < 0)
         v = 0;
-      else if(f > 65535)
-        v = 65535;
+      else if(f > SKYLEVEL_DEFAULT_ULIM)
+        v = SKYLEVEL_DEFAULT_ULIM;
       else
         v = f;
 
@@ -183,4 +183,6 @@ void skylevel_image (float *map, unsigned char *mask, int npix,
   }
   
   skylevel(hist, hmin, hmax, nhist, clip_low, clip_high, skylev, skynoise);
+
+  *skylev -= SKYLEVEL_DEFAULT_OFFSET;
 }

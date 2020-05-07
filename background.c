@@ -17,7 +17,7 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
   float *tmpbuf = (float *) NULL;
   float *work = (float *) NULL;
 
-  int hist[65536], nhist, hmin, hmax;
+  int hist[SKYLEVEL_DEFAULT_SIZE], nhist, hmin, hmax;
   int nmed;
 
   int bx, by, ox, oy, x, y, p, pb, v;
@@ -74,7 +74,7 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
     goto error;
 
   hmin = 0;
-  hmax = 65535;
+  hmax = SKYLEVEL_DEFAULT_ULIM;
 
   /* Compute background in each bin */
   nmed = 0;
@@ -91,7 +91,7 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
       for(v = hmin; v <= hmax; v++)
         hist[v] = 0;
 
-      hmin = 65535;
+      hmin = SKYLEVEL_DEFAULT_ULIM;
       hmax = 0;
 
       nhist = 0;
@@ -102,12 +102,12 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
           p = (oy+y)*nx + (ox+x);
 
           if(!mask || mask[p]) {
-            f = rintf(mapin[p]);
+            f = rintf(mapin[p]) + SKYLEVEL_DEFAULT_OFFSET;
 
             if(f < 0)
               v = 0;
-            else if(f > 65535)
-              v = 65535;
+            else if(f > SKYLEVEL_DEFAULT_ULIM)
+              v = SKYLEVEL_DEFAULT_ULIM;
             else
               v = f;
 
@@ -124,10 +124,10 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
       if(nhist >= minpix) {
         skylevel(hist, hmin, hmax, nhist, -FLT_MAX, 3.0, &skylev, &skynoise);
 
-        bgmap[pb] = skylev;
+        bgmap[pb] = skylev - SKYLEVEL_DEFAULT_OFFSET;
         bgmask[pb] = 1;
 
-        tmpbuf[nmed] = skylev;
+        tmpbuf[nmed] = skylev - SKYLEVEL_DEFAULT_OFFSET;
         nmed++;
       }
       else {

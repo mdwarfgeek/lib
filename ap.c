@@ -705,7 +705,7 @@ void ap_phot (float *map, unsigned char *mask,
     *flux = sum;
 }
 
-/* NOTE: data must be in 16-bit unsigned integer range to use this! */
+/* NOTE: data must be in defined range (-1024 to 65535) to use this! */
 
 void ap_skyann (float *map, unsigned char *mask,
                 int nx, int ny,
@@ -750,7 +750,7 @@ void ap_skyann (float *map, unsigned char *mask,
     for(v = *hmin; v <= *hmax; v++)
       hist[v] = 0;
   
-  *hmin = 65535;
+  *hmin = SKYLEVEL_DEFAULT_ULIM;
   *hmax = 0;
 
   nhist = 0;
@@ -765,12 +765,12 @@ void ap_skyann (float *map, unsigned char *mask,
       if(rsq >= rinnsq && rsq <= routsq) {
         p = y*nx+x;
         if(!mask || mask[p]) {
-          f = rintf(map[p]);
+          f = rintf(map[p]) + SKYLEVEL_DEFAULT_OFFSET;
           
           if(f < 0)
             v = 0;
-          else if(f > 65535)
-            v = 65535;
+          else if(f > SKYLEVEL_DEFAULT_ULIM)
+            v = SKYLEVEL_DEFAULT_ULIM;
           else
             v = f;
 
@@ -787,4 +787,6 @@ void ap_skyann (float *map, unsigned char *mask,
   }
 
   skylevel(hist, *hmin, *hmax, nhist, clip_low, clip_high, skylev, skynoise);
+
+  *skylev -= SKYLEVEL_DEFAULT_OFFSET;
 }

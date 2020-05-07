@@ -3104,7 +3104,7 @@ static PyObject *lfa_ap_skyann (PyObject *self,
   float clip_low = -FLT_MAX;
   float clip_high = 3.0;
 
-  int hist[65536], hmin, hmax;
+  int hist[SKYLEVEL_DEFAULT_SIZE], hmin, hmax;
   
   /* Get arguments */
   if(!PyArg_ParseTupleAndKeywords(args, kwds,
@@ -3197,7 +3197,7 @@ static PyObject *lfa_ap_skyann (PyObject *self,
   skyrms = PyArray_DATA(skyrmsarr);
 
   hmin = 0;
-  hmax = 65535;
+  hmax = SKYLEVEL_DEFAULT_ULIM;
 
   for(iobj = 0; iobj < nobj; iobj++)
     ap_skyann(PyArray_DATA(maparr),
