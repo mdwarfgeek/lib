@@ -640,3 +640,151 @@ void ap_ellipse (struct ap_source *obj,
   }
 }
 
+void ap_phot (float *map, unsigned char *mask,
+              int nx, int ny,
+              float sky,
+              double xcent, double ycent, double r,
+              double *xret, double *yret, double *flux) {
+  int xmin, xmax, ymin, ymax;
+  int x, y;
+  double rb, zf, frac, sx, sy, sz, sum;
+
+  /* Convert inputs to 0-based coordinate system */
+  xcent--;
+  ycent--;
+
+  /* Bounds of circle */
+  rb = r + 0.5;
+
+  xmin = floor(xcent - rb);
+  if(xmin < 0)
+    xmin = 0;
+
+  xmax = ceil(xcent + rb);
+  if(xmax >= nx)
+    xmax = nx-1;
+
+  ymin = floor(ycent - rb);
+  if(ymin < 0)
+    ymin = 0;
+
+  ymax = ceil(ycent + rb);
+  if(ymax >= ny)
+    ymax = ny-1;
+
+  /* Sum over circle, the lazy and inefficient way for now */
+  sx = 0.0;
+  sy = 0.0;
+  sz = 0.0;
+
+  sum = 0.0;
+  for(y = ymin; y <= ymax; y++)
+    for(x = xmin; x <= xmax; x++) {
+      frac = pixovcirc(x-xcent, y-ycent, r);
+      zf = (map[y*nx+x] - sky) * frac;
+
+      if(zf > 0) {
+        sx += (x + 1.0) * zf;
+        sy += (y + 1.0) * zf;
+        sz += zf;
+      }
+
+      sum += zf;
+    }
+
+  /* Return outputs */
+  if(sz > 0) {
+    if(xret)
+      *xret = sx / sz;
+
+    if(yret)
+      *yret = sy / sz;
+  }
+
+  if(flux)
+    *flux = sum;
+}
+
+/* NOTE: data must be in 16-bit unsigned integer range to use this! */
+
+void ap_skyann (float *map, unsigned char *mask,
+                int nx, int ny,
+                double xcent, double ycent, double rinn, double rout,
+                int *hist, int *hmin, int *hmax,
+                float clip_low, float clip_high,
+                float *skylev, float *skynoise) {
+  int xmin, xmax, ymin, ymax;
+  int x, y;
+  double rb, dx, dy, rinnsq, routsq, rsq;
+  int nhist, v, p;
+  float f;
+
+  /* Convert inputs to 0-based coordinate system */
+  xcent--;
+  ycent--;
+
+  rinnsq = rinn*rinn;
+  routsq = rout*rout;
+  
+  /* Bounds of circle */
+  rb = rout + 0.5;
+
+  xmin = floor(xcent - rb);
+  if(xmin < 0)
+    xmin = 0;
+
+  xmax = ceil(xcent + rb);
+  if(xmax >= nx)
+    xmax = nx-1;
+
+  ymin = floor(ycent - rb);
+  if(ymin < 0)
+    ymin = 0;
+
+  ymax = ceil(ycent + rb);
+  if(ymax >= ny)
+    ymax = ny-1;
+  
+  /* Clear histogram */
+  if(*hmin <= *hmax)
+    for(v = *hmin; v <= *hmax; v++)
+      hist[v] = 0;
+  
+  *hmin = 65535;
+  *hmax = 0;
+
+  nhist = 0;
+
+  for(y = ymin; y <= ymax; y++) {
+    dy = y-ycent;
+    for(x = xmin; x <= xmax; x++) {
+      dx = x-xcent;
+
+      rsq = dx*dx+dy*dy;
+
+      if(rsq >= rinnsq && rsq <= routsq) {
+        p = y*nx+x;
+        if(!mask || mask[p]) {
+          f = rintf(map[p]);
+          
+          if(f < 0)
+            v = 0;
+          else if(f > 65535)
+            v = 65535;
+          else
+            v = f;
+
+          hist[v]++;
+          nhist++;
+          
+          if(v < *hmin)
+            *hmin = v;
+          if(v > *hmax)
+            *hmax = v;
+        }
+      }
+    }
+  }
+
+  skylevel(hist, *hmin, *hmax, nhist, clip_low, clip_high, skylev, skynoise);
+}

@@ -131,4 +131,18 @@ int ap_image (struct ap *ap,
 void ap_ellipse (struct ap_source *obj,
                  double *gfwhm, double *ell, double *spa, double *cpa);
 
+/* Aperture photometry */
+void ap_phot (float *map, unsigned char *mask,
+              int nx, int ny,
+              float sky,
+              double xcent, double ycent, double r,
+              double *xret, double *yret, double *flux);
+
+void ap_skyann (float *map, unsigned char *mask,
+                int nx, int ny,
+                double xcent, double ycent, double rinn, double rout,
+                int *hist, int *hmin, int *hmax,
+                float clip_low, float clip_high,
+                float *skylev, float *skynoise);
+
 #endif  /* AP_H */

@@ -2887,6 +2887,353 @@ static PyObject *lfa_skylevel_image (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_ap_phot (PyObject *self,
+                              PyObject *args,
+                              PyObject *kwds) {
+  static char *kwlist[] = { "map",
+                            "sky",
+                            "xcent",
+                            "ycent",
+                            "r",
+                            "mask",
+                            NULL };
+  PyObject *maparg;
+  PyObject *skyarg;
+  PyObject *xcentarg;
+  PyObject *ycentarg;
+  PyObject *rarg;
+  PyObject *maskarg = NULL;
+
+  PyObject *maparr = NULL;
+  PyObject *skyarr = NULL;
+  PyObject *xcentarr = NULL;
+  PyObject *ycentarr = NULL;
+  PyObject *rarr = NULL;
+  PyObject *maskarr = NULL;
+
+  PyObject *xoutarr = NULL;
+  PyObject *youtarr = NULL;
+  PyObject *fluxoutarr = NULL;
+
+  int iobj, nobj, nsky, nr;
+
+  float *sky;
+  double *xcent;
+  double *ycent;
+  double *r;
+  double *xout;
+  double *yout;
+  double *fluxout;
+
+  int ndim;
+  npy_intp *dims;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "OOOOO|O", kwlist,
+                                  &maparg,
+                                  &skyarg,
+                                  &xcentarg,
+                                  &ycentarg,
+                                  &rarg,
+                                  &maskarg))
+    return(NULL);
+
+  maparr = PyArray_FROM_OTF(maparg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!maparr)
+    goto error;
+
+  ndim = PyArray_NDIM(maparr);
+  dims = PyArray_DIMS(maparr);
+
+  if(ndim != 2) {
+    PyErr_SetString(PyExc_IndexError, "expected 2-D map");
+    goto error;
+  }
+
+  skyarr = PyArray_FROM_OTF(skyarg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!skyarr)
+    goto error;
+
+  xcentarr = PyArray_FROM_OTF(xcentarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!xcentarr)
+    goto error;
+
+  ycentarr = PyArray_FROM_OTF(ycentarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!ycentarr)
+    goto error;
+
+  rarr = PyArray_FROM_OTF(rarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!rarr)
+    goto error;
+
+  nobj = PyArray_Size(xcentarr);
+
+  if(PyArray_Size(ycentarr) != nobj) {
+    PyErr_SetString(PyExc_IndexError, "xcent and ycent sizes differ");
+    goto error;
+  }
+
+  nsky = PyArray_Size(skyarr);
+
+  if(nsky != 1 && nsky != nobj) {
+    PyErr_SetString(PyExc_IndexError, "number of skies differs from objects");
+    goto error;
+  }
+
+  nr = PyArray_Size(rarr);
+
+  if(nr != 1 && nr != nobj) {
+    PyErr_SetString(PyExc_IndexError, "number of skies differs from objects");
+    goto error;
+  }
+
+  if(maskarg && maskarg != Py_None) {
+    maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!maskarr)
+      goto error;
+
+    if(PyArray_Size(maskarr) < PyArray_Size(maparr)) {
+      PyErr_SetString(PyExc_IndexError, "mask too small");
+      goto error;
+    }
+  }
+
+  xoutarr = PyArray_SimpleNew(PyArray_NDIM(xcentarr),
+                              PyArray_DIMS(xcentarr),
+                              NPY_DOUBLE);
+  if(!xoutarr)
+    goto error;
+
+  youtarr = PyArray_SimpleNew(PyArray_NDIM(xcentarr),
+                              PyArray_DIMS(xcentarr),
+                              NPY_DOUBLE);
+  if(!youtarr)
+    goto error;
+
+  fluxoutarr = PyArray_SimpleNew(PyArray_NDIM(xcentarr),
+                                 PyArray_DIMS(xcentarr),
+                                 NPY_DOUBLE);
+  if(!fluxoutarr)
+    goto error;
+
+  sky = PyArray_DATA(skyarr);
+  xcent = PyArray_DATA(xcentarr);
+  ycent = PyArray_DATA(ycentarr);
+  r = PyArray_DATA(rarr);
+  xout = PyArray_DATA(xoutarr);
+  yout = PyArray_DATA(youtarr);
+  fluxout = PyArray_DATA(fluxoutarr);
+
+  for(iobj = 0; iobj < nobj; iobj++)
+    ap_phot(PyArray_DATA(maparr),
+            maskarr ? PyArray_DATA(maskarr) : NULL,
+            dims[DIM_X], dims[DIM_Y],
+            nsky == 1 ? sky[0] : sky[iobj],
+            xcent[iobj], ycent[iobj],
+            nr == 1 ? r[0] : r[iobj],
+            &(xout[iobj]), &(yout[iobj]), &(fluxout[iobj]));
+
+  Py_DECREF(maparr);
+  Py_DECREF(skyarr);
+  Py_DECREF(xcentarr);
+  Py_DECREF(ycentarr);
+  Py_DECREF(rarr);
+  Py_XDECREF(maskarr);
+
+  return(Py_BuildValue("NNN",
+                       PyArray_Return((PyArrayObject *) xoutarr),
+                       PyArray_Return((PyArrayObject *) youtarr),
+                       PyArray_Return((PyArrayObject *) fluxoutarr)));
+
+ error:
+  Py_XDECREF(maparr);
+  Py_XDECREF(skyarr);
+  Py_XDECREF(xcentarr);
+  Py_XDECREF(ycentarr);
+  Py_XDECREF(rarr);
+  Py_XDECREF(maskarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) xoutarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) youtarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) fluxoutarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_ap_skyann (PyObject *self,
+                                PyObject *args,
+                                PyObject *kwds) {
+  static char *kwlist[] = { "map",
+                            "xcent",
+                            "ycent",
+                            "rinn",
+                            "rout",
+                            "mask",
+                            "clip_low",
+                            "clip_high",
+                            NULL };
+  PyObject *maparg;
+  PyObject *xcentarg;
+  PyObject *ycentarg;
+  PyObject *rinnarg;
+  PyObject *routarg;
+  PyObject *maskarg = NULL;
+
+  PyObject *maparr = NULL;
+  PyObject *xcentarr = NULL;
+  PyObject *ycentarr = NULL;
+  PyObject *rinnarr = NULL;
+  PyObject *routarr = NULL;
+  PyObject *maskarr = NULL;
+
+  PyObject *skylevarr = NULL;
+  PyObject *skyrmsarr = NULL;
+
+  int iobj, nobj, nr;
+
+  double *xcent;
+  double *ycent;
+  double *rinn;
+  double *rout;
+  float *skylev;
+  float *skyrms;
+
+  int ndim;
+  npy_intp *dims;
+
+  float clip_low = -FLT_MAX;
+  float clip_high = 3.0;
+
+  int hist[65536], hmin, hmax;
+  
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "OOOOO|O", kwlist,
+                                  &maparg,
+                                  &xcentarg,
+                                  &ycentarg,
+                                  &rinnarg,
+                                  &routarg,
+                                  &maskarg,
+                                  &clip_low,
+                                  &clip_high))
+    return(NULL);
+
+  maparr = PyArray_FROM_OTF(maparg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!maparr)
+    goto error;
+
+  ndim = PyArray_NDIM(maparr);
+  dims = PyArray_DIMS(maparr);
+
+  if(ndim != 2) {
+    PyErr_SetString(PyExc_IndexError, "expected 2-D map");
+    goto error;
+  }
+
+  xcentarr = PyArray_FROM_OTF(xcentarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!xcentarr)
+    goto error;
+
+  ycentarr = PyArray_FROM_OTF(ycentarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!ycentarr)
+    goto error;
+
+  rinnarr = PyArray_FROM_OTF(rinnarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!rinnarr)
+    goto error;
+
+  routarr = PyArray_FROM_OTF(routarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!routarr)
+    goto error;
+
+  nobj = PyArray_Size(xcentarr);
+
+  if(PyArray_Size(ycentarr) != nobj) {
+    PyErr_SetString(PyExc_IndexError, "xcent and ycent sizes differ");
+    goto error;
+  }
+
+  nr = PyArray_Size(rinnarr);
+
+  if(nr != 1 && nr != nobj) {
+    PyErr_SetString(PyExc_IndexError, "number of skies differs from objects");
+    goto error;
+  }
+
+  if(nr != PyArray_Size(routarr)) {
+    PyErr_SetString(PyExc_IndexError, "rinn and rout sizes differ");
+    goto error;
+  }
+  
+  if(maskarg && maskarg != Py_None) {
+    maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!maskarr)
+      goto error;
+
+    if(PyArray_Size(maskarr) < PyArray_Size(maparr)) {
+      PyErr_SetString(PyExc_IndexError, "mask too small");
+      goto error;
+    }
+  }
+
+  skylevarr = PyArray_SimpleNew(PyArray_NDIM(xcentarr),
+                                PyArray_DIMS(xcentarr),
+                                NPY_FLOAT);
+  if(!skylevarr)
+    goto error;
+
+  skyrmsarr = PyArray_SimpleNew(PyArray_NDIM(xcentarr),
+                                PyArray_DIMS(xcentarr),
+                                NPY_FLOAT);
+  if(!skyrmsarr)
+    goto error;
+
+  xcent = PyArray_DATA(xcentarr);
+  ycent = PyArray_DATA(ycentarr);
+  rinn = PyArray_DATA(rinnarr);
+  rout = PyArray_DATA(routarr);
+  skylev = PyArray_DATA(skylevarr);
+  skyrms = PyArray_DATA(skyrmsarr);
+
+  hmin = 0;
+  hmax = 65535;
+
+  for(iobj = 0; iobj < nobj; iobj++)
+    ap_skyann(PyArray_DATA(maparr),
+              maskarr ? PyArray_DATA(maskarr) : NULL,
+              dims[DIM_X], dims[DIM_Y],
+              xcent[iobj], ycent[iobj],
+              nr == 1 ? rinn[0] : rinn[iobj],
+              nr == 1 ? rout[0] : rout[iobj],
+              hist, &hmin, &hmax,
+              clip_low, clip_high,
+              &(skylev[iobj]), &(skyrms[iobj]));
+
+  Py_DECREF(maparr);
+  Py_DECREF(xcentarr);
+  Py_DECREF(ycentarr);
+  Py_DECREF(rinnarr);
+  Py_DECREF(routarr);
+  Py_XDECREF(maskarr);
+
+  return(Py_BuildValue("NN",
+                       PyArray_Return((PyArrayObject *) skylevarr),
+                       PyArray_Return((PyArrayObject *) skyrmsarr)));
+
+ error:
+  Py_XDECREF(maparr);
+  Py_XDECREF(xcentarr);
+  Py_XDECREF(ycentarr);
+  Py_XDECREF(rinnarr);
+  Py_XDECREF(routarr);
+  Py_XDECREF(maskarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) skylevarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) skyrmsarr);
+
+  return(NULL);
+}
+
 static PyMethodDef lfa_methods[] = {
   { "source_star_vec", (PyCFunction) lfa_source_star_vec,
     METH_VARARGS | METH_KEYWORDS,
@@ -2984,6 +3331,12 @@ static PyMethodDef lfa_methods[] = {
   { "skylevel_image", (PyCFunction) lfa_skylevel_image,
     METH_VARARGS | METH_KEYWORDS,
     "skylev, skynoise = skylevel_image(map, mask=None, clip_low=-FLT_MAX, clip_high=3)" },
+  { "ap_phot", (PyCFunction) lfa_ap_phot,
+    METH_VARARGS | METH_KEYWORDS,
+    "flux = ap_phot(map, skylev, xcent, ycent, r, mask=None)" },
+  { "ap_skyann", (PyCFunction) lfa_ap_skyann,
+    METH_VARARGS | METH_KEYWORDS,
+    "skylev, skyrms = ap_skyann(map, xcent, ycent, rinn, rout, mask=None, clip_low=-FLT_MAX, clip_high=3)" },
   { NULL, NULL, 0, NULL }
 };
 
