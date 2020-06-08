@@ -24,12 +24,18 @@ and IERS tables, which are located using environment variables.
 
 I recommend using the JPL DE430t ephemeris for most purposes, which
 can be found in a binary form suitable for use with the library here:
+
 ftp://ssd.jpl.nasa.gov/pub/eph/planets/Linux/de430t/
+
 Download the file linux_p1550p2650.430t and set JPLEPH_DATA to the
 path to this file.
 
 The IERS tables needed are finals2000A.data and tai-utc.dat.  They can
-be obtained from: ftp://maia.usno.navy.mil/ser7/
+be obtained from:
+
+ftp://maia.usno.navy.mil/ser7/                   (currently offline)
+ftp://cddis.gsfc.nasa.gov/pub/products/iers/
+
 Set IERS_DATA to the directory containing these files.  If running a
 telescope or processing data regularly you may want to set up a cron
 job to keep these files up to date.
