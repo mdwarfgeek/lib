@@ -8,6 +8,7 @@
 
 #include "ap.h"
 #include "cvtunit.h"
+#include "specfind.h"
 #include "lfa.h"
 
 /* Macros to help me not get confused about y,x in numpy 2D arrays */
@@ -3234,6 +3235,278 @@ static PyObject *lfa_ap_skyann (PyObject *self,
   return(NULL);
 }
 
+static PyArray_Descr *lfa_specfind_build_descr (void) {
+  PyObject *names = (PyObject *) NULL;
+  PyObject *formats = (PyObject *) NULL;
+  PyObject *offsets = (PyObject *) NULL;
+  PyObject *d = (PyObject *) NULL;
+  PyArray_Descr *dtype = (PyArray_Descr *) NULL;
+  PyObject *o;
+
+  struct {
+    char *name;
+    char *format;
+    size_t offset;
+  } members[] = {
+    { "x", "f8", offsetof(struct specfind_line, x) },
+    { "ziso", "f8", offsetof(struct specfind_line, ziso) },
+    { "zpk", "f8", offsetof(struct specfind_line, zpk) },
+    { "xl", "i4", offsetof(struct specfind_line, xl) },
+    { "xh", "i4", offsetof(struct specfind_line, xh) },
+    { "flags", "B", offsetof(struct specfind_line, flags) },
+  };
+
+  int imemb, nmemb;
+
+  /* Create lists */
+  nmemb = sizeof(members) / sizeof(members[0]);
+
+  names = PyList_New(nmemb);
+  formats = PyList_New(nmemb);
+  offsets = PyList_New(nmemb);
+  if(!names || !formats || !offsets)
+    goto error;
+
+  /* Populate */
+  for(imemb = 0; imemb < nmemb; imemb++) {
+    o = PyString_FromString(members[imemb].name);
+    if(!o)
+      goto error;
+
+    PyList_SetItem(names, imemb, o);  /* list takes over our ref to o */
+
+    o = PyString_FromString(members[imemb].format);
+    if(!o)
+      goto error;
+
+    PyList_SetItem(formats, imemb, o);
+
+    o = PyInt_FromSize_t(members[imemb].offset);
+    if(!o)
+      goto error;
+
+    PyList_SetItem(offsets, imemb, o);
+  }
+
+  /* Create dictionary */
+  d = PyDict_New();
+  if(!d)
+    goto error;
+
+  PyDict_SetItemString(d, "names", names);  /* does not take over our ref */
+  Py_DECREF(names);                         /* so we have to do this */
+
+  PyDict_SetItemString(d, "formats", formats);
+  Py_DECREF(formats);
+
+  PyDict_SetItemString(d, "offsets", offsets);
+  Py_DECREF(offsets);
+
+  o = PyInt_FromSize_t(sizeof(struct specfind_line));
+  if(!o)
+    goto error;
+
+  PyDict_SetItemString(d, "itemsize", o);
+  Py_DECREF(o);
+
+  /* Convert to descriptor */
+  if(PyArray_DescrConverter(d, &dtype) != NPY_SUCCEED)
+    goto error;
+
+  Py_DECREF(d);
+
+  return(dtype);
+
+ error:
+  Py_XDECREF(names);
+  Py_XDECREF(formats);
+  Py_XDECREF(offsets);
+  Py_XDECREF(d);
+
+  return(NULL);
+}
+
+/* In order to avoid leaking source lists when we wrap them in numpy
+   arrays, we need to create an object to "own" the source list. */
+
+struct lfa_specfind_list_object {
+  PyObject_HEAD
+  struct specfind_line *list;
+  int nlist;
+};
+
+static PyObject *lfa_specfind_list_new (PyTypeObject *type,
+                                         PyObject *args,
+                                         PyObject *kwds) {
+  struct lfa_specfind_list_object *self = NULL;
+
+  /* Allocate */
+  self = (struct lfa_specfind_list_object *) type->tp_alloc(type, 0);
+  if(self) {
+    self->list = NULL;
+    self->nlist = 0;
+  }
+
+  return((PyObject *) self);
+}
+
+static void lfa_specfind_list_dealloc (struct lfa_specfind_list_object *self) {
+  if(self->list) {
+    free(self->list);
+    self->list = NULL;
+    self->nlist = 0;
+  }
+
+  Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
+static PyTypeObject lfa_specfind_list_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  "lfa.ap.source_list",                      /* tp_name */
+  sizeof(struct lfa_specfind_list_object),  /* tp_basicsize */
+  0,                                         /* tp_itemsize */
+  (destructor) lfa_specfind_list_dealloc,   /* tp_dealloc */
+  0,                                         /* tp_print */
+  0,                                         /* tp_getattr */
+  0,                                         /* tp_setattr */
+  0,                                         /* tp_compare */
+  0,                                         /* tp_repr */
+  0,                                         /* tp_as_number */
+  0,                                         /* tp_as_sequence */
+  0,                                         /* tp_as_mapping */
+  0,                                         /* tp_hash */
+  0,                                         /* tp_call */
+  0,                                         /* tp_str */
+  0,                                         /* tp_getattro */
+  0,                                         /* tp_setattro */
+  0,                                         /* tp_as_buffer */
+  Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
+  "ap source list",                          /* tp_doc */
+  0,                                         /* tp_traverse */
+  0,                                         /* tp_clear */
+  0,                                         /* tp_richcompare */
+  0,                                         /* tp_weaklistoffset */
+  0,                                         /* tp_iter */
+  0,                                         /* tp_iternext */
+  0,                                         /* tp_methods */
+  0,                                         /* tp_members */
+  0,                                         /* tp_getset */
+  0,                                         /* tp_base */
+  0,                                         /* tp_dict */
+  0,                                         /* tp_descr_get */
+  0,                                         /* tp_descr_set */
+  0,                                         /* tp_dictoffset */
+  0,                                         /* tp_init */
+  0,                                         /* tp_alloc */
+  lfa_specfind_list_new                     /* tp_new */
+};
+
+static PyObject *lfa_specfind (PyObject *self,
+                               PyObject *args,
+                               PyObject *kwds) {
+  static char *kwlist[] = { "line",
+                            "minpix",
+                            "sky",
+                            "thresh",
+                            "mask",
+                            NULL };
+  PyObject *linearg;
+  PyObject *maskarg = NULL;
+  int nx, minpix;
+  float sky, thresh;
+
+  PyObject *linearr = NULL;
+  PyObject *maskarr = NULL;
+
+  struct lfa_specfind_list_object *slist = NULL;
+  npy_intp outdim[1] = { 0 };
+  PyObject *result = NULL;
+
+  PyArray_Descr *dtype = NULL;
+  
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "Oiff|O", kwlist,
+                                  &linearg,
+                                  &minpix,
+                                  &sky,
+                                  &thresh,
+                                  &maskarg))
+    return(NULL);
+
+  linearr = PyArray_FROM_OTF(linearg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!linearr)
+    goto error;
+
+  nx = PyArray_Size(linearr);
+  
+  if(maskarg && maskarg != Py_None) {
+    maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!maskarr)
+      goto error;
+
+    if(PyArray_Size(maskarr) < nx) {
+      PyErr_SetString(PyExc_IndexError, "mask too small");
+      goto error;
+    }
+  }
+
+  /* Create source list object */
+  slist = (struct lfa_specfind_list_object *)
+    lfa_specfind_list_type.tp_alloc(&lfa_specfind_list_type, 0);
+  if(!slist)
+    goto error;
+
+  slist->list = NULL;
+  slist->nlist = 0;
+
+  if(specfind(PyArray_DATA(linearr),
+              maskarr ? PyArray_DATA(maskarr) : NULL,
+              nx,
+              minpix, sky, thresh,
+              &(slist->list), &(slist->nlist))) {
+    PyErr_SetString(PyExc_RuntimeError, "specfind");
+    goto error;
+  }
+
+  Py_DECREF(linearr);
+  Py_XDECREF(maskarr);
+
+  /* Build descriptor */
+  dtype = lfa_specfind_build_descr();
+  if(!dtype)
+    goto error;
+  
+  /* Create result array.  This takes over our reference to "dtype".
+     The memory buffer for the source list is owned by "slist" */
+  outdim[0] = slist->nlist;
+
+  result = PyArray_NewFromDescr(&PyArray_Type,
+                                dtype,
+                                1, outdim, NULL,
+                                slist->list, 0,
+                                NULL);
+  if(!result)
+    goto error;
+
+  /* Tell numpy who owns the memory.  This steals our reference to the
+     source list, so we don't need to decref it. */
+  PyArray_BASE((PyArrayObject *) result) = (PyObject *) slist;
+
+  /* Finally we can return the result */
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) result)));
+
+ error:
+  Py_XDECREF(linearr);
+  Py_XDECREF(maskarr);
+  Py_XDECREF((PyObject *) slist);
+  Py_XDECREF(dtype);
+  PyArray_XDECREF_ERR((PyArrayObject *) result);
+
+  return(NULL);
+}
+
 static PyMethodDef lfa_methods[] = {
   { "source_star_vec", (PyCFunction) lfa_source_star_vec,
     METH_VARARGS | METH_KEYWORDS,
@@ -3337,6 +3610,9 @@ static PyMethodDef lfa_methods[] = {
   { "ap_skyann", (PyCFunction) lfa_ap_skyann,
     METH_VARARGS | METH_KEYWORDS,
     "skylev, skyrms = ap_skyann(map, xcent, ycent, rinn, rout, mask=None, clip_low=-FLT_MAX, clip_high=3)" },
+  { "specfind", (PyCFunction) lfa_specfind,
+    METH_VARARGS | METH_KEYWORDS,
+    "sources = image(line, minpix, sky, thresh, mask=None)" },
   { NULL, NULL, 0, NULL }
 };
 
@@ -3534,6 +3810,9 @@ PyMODINIT_FUNC initlfa (void) {
 
   Py_INCREF(&lfa_ap_type);
   PyModule_AddObject(m, "ap", (PyObject *) &lfa_ap_type);
+
+  if(PyType_Ready(&lfa_specfind_list_type) < 0)
+    goto error;
 
 #if PY_MAJOR_VERSION >= 3
   return(m);
