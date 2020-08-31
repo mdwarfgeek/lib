@@ -182,6 +182,25 @@ struct dtai_table {
   int ntab;
 };
 
+struct fsgp_fac {
+  /* Inputs */
+  double *kern;
+  double sumaj;
+  double *t;
+  
+  /* Factorization */
+  double *phi;
+  double *u;  /* ubar */
+  double *v;  /* vbar */
+  double *w;  /* wbar */
+  double *d;
+
+  /* Sizes */
+  int nkern;
+  int nckern;
+  int ndp;
+};
+
 struct iers_entry {
   double mjd;
 
@@ -584,6 +603,22 @@ void filt1d_median (float *buf, unsigned char *mask, float *work,
 
 int vec2tp (double s[3], double tp[3], double *x, double *y);
 void tp2vec (double x, double y, double tp[3], double s[3]);
+
+/* -- fsgp.c: "fast and scalable Gaussian processes" -- */
+
+int fsgp_kern_sho (double s0, double w0, double q, double *kern);
+int fsgp_kern_matern (double s0, double w0, double f, double *kern);
+int fsgp_kern_valid (double *kern, int nkern);
+int fsgp_compute (struct fsgp_fac *fac,
+                  double *kern, int nkern,
+                  double *t, double *yerr, int ndp);
+int fsgp_apply (struct fsgp_fac *fac, double *y, double *z, int nrhs);
+int fsgp_predict (struct fsgp_fac *fac, double *z,
+                  double *tpred, double *ypred, double *varpred, int npred);
+int fsgp_sample (struct fsgp_fac *fac, double *q, double *y);
+double fsgp_logdet (struct fsgp_fac *fac);
+int fsgp_loglike (struct fsgp_fac *fac, double *y, double *loglike);
+void fsgp_free (struct fsgp_fac *fac);
 
 /* -- geoc.c: geodetic to geocentric -- */
 
