@@ -117,6 +117,7 @@ int fsgp_compute (struct fsgp_fac *fac,
                   double *t, double *yerr, int ndp) {
   double *kerncopy = (double *) NULL;
   double *tcopy = (double *) NULL;
+  double *yvar = (double *) NULL;
   double *phi = (double *) NULL;
   double *u = (double *) NULL;
   double *v = (double *) NULL;
@@ -133,13 +134,14 @@ int fsgp_compute (struct fsgp_fac *fac,
   /* Allocate arrays */
   kerncopy = (double *) malloc(4*nkern * sizeof(double));
   tcopy = (double *) malloc(ndp * sizeof(double));
+  yvar = (double *) malloc(ndp * sizeof(double));
   phi = (double *) malloc(ndp*nckern * sizeof(double));
   u = (double *) malloc(ndp*nckern * sizeof(double));
   v = (double *) malloc(ndp*nckern * sizeof(double));
   w = (double *) malloc(ndp*nckern * sizeof(double));
   d = (double *) malloc(ndp * sizeof(double));
   s = (double *) malloc(nckern*nckern * sizeof(double));
-  if(!kerncopy || !tcopy || !phi || !u || !v || !w || !d || !s)
+  if(!kerncopy || !tcopy || !yvar || !phi || !u || !v || !w || !d || !s)
     goto error;
 
   /* Copies of inputs needed for "predict" operation */
@@ -155,7 +157,8 @@ int fsgp_compute (struct fsgp_fac *fac,
   }
   
   /* First term */
-  d[0] = yerr[0]*yerr[0] + sumaj;
+  yvar[0] = yerr[0]*yerr[0];
+  d[0] = yvar[0] + sumaj;
 
   for(jkern = 0; jkern < nkern; jkern++) {
     aj = kern[4*jkern];
@@ -219,7 +222,8 @@ int fsgp_compute (struct fsgp_fac *fac,
     }
 
     /* Calculate D */
-    d[idp] = yerr[idp]*yerr[idp] + sumaj - sum;
+    yvar[idp] = yerr[idp]*yerr[idp];
+    d[idp] = yvar[idp] + sumaj - sum;
 
     /* Calculate W */
     for(jckern = 0; jckern < nckern; jckern++) {
@@ -241,6 +245,7 @@ int fsgp_compute (struct fsgp_fac *fac,
   fac->kern = kerncopy;
   fac->sumaj = sumaj;
   fac->t = tcopy;
+  fac->yvar = yvar;
   fac->phi = phi;
   fac->u = u;
   fac->v = v;
@@ -257,6 +262,8 @@ int fsgp_compute (struct fsgp_fac *fac,
     free((void *) kerncopy);
   if(tcopy)
     free((void *) tcopy);
+  if(yvar)
+    free((void *) yvar);
   if(phi)
     free((void *) phi);
   if(u)
@@ -344,253 +351,310 @@ int fsgp_apply (struct fsgp_fac *fac, double *y, double *z, int nrhs) {
 /* "Predict" (interpolation/extrapolation) function based on result
    from "apply" above.  Data points must be in time order. */
 
-int fsgp_predict (struct fsgp_fac *fac, double *z,
+int fsgp_predict (struct fsgp_fac *fac, double *y,
                   double *tpred, double *ypred, double *varpred, int npred) {
+  double *z = (double *) NULL;
+  
   double *sinarg = (double *) NULL;
   double *cosarg = (double *) NULL;
   double ttmp;
   int ipred, offpred;
   
   double *q = (double *) NULL;
-  int idp, off, offn, jkern, jckern;
+  int idp, jdp, off, offn, jkern, jckern;
   double aj, bj, cj, dj, exparg, u, v, mu;
 
   double *ktt = (double *) NULL;
   double *ktp = (double *) NULL;
   double sum, dt, sgn;
-  
-  /* Precalculate sin, cos terms and initialize outputs */
-  sinarg = (double *) malloc(npred*fac->nkern * sizeof(double));
-  cosarg = (double *) malloc(npred*fac->nkern * sizeof(double));
-  if(!sinarg || !cosarg)
+
+  /* Calculate z */
+  z = (double *) malloc(fac->ndp * sizeof(double));
+  if(!z)
     goto error;
+  
+  if(fsgp_apply(fac, y, z, 1))
+    goto error;
+  
+  if(tpred) {    
+    /* Precalculate sin, cos terms and initialize outputs */
+    sinarg = (double *) malloc(npred*fac->nkern * sizeof(double));
+    cosarg = (double *) malloc(npred*fac->nkern * sizeof(double));
+    if(!sinarg || !cosarg)
+      goto error;
 
-  for(ipred = 0; ipred < npred; ipred++) {
-    off = ipred*fac->nkern;
-    ttmp = tpred[ipred];
+    for(ipred = 0; ipred < npred; ipred++) {
+      off = ipred*fac->nkern;
+      ttmp = tpred[ipred];
 
-    for(jkern = 0; jkern < fac->nkern; jkern++) {
-      dj = fac->kern[4*jkern+3];
-      inline_sincos(dj * ttmp, sinarg[off+jkern], cosarg[off+jkern]);
+      for(jkern = 0; jkern < fac->nkern; jkern++) {
+        dj = fac->kern[4*jkern+3];
+        inline_sincos(dj * ttmp, sinarg[off+jkern], cosarg[off+jkern]);
+      }
+
+      ypred[ipred] = 0;
+    }
+  
+    /* Allocate workspace */
+    q = (double *) malloc(fac->nckern * sizeof(double));
+    if(!q)
+      goto error;
+
+    /* Forward pass: init Q */
+    for(jckern = 0; jckern < fac->nckern; jckern++)
+      q[jckern] = 0;
+
+    /* Extrapolation prior to start, all means are zero so just skip them */
+    ipred = 0;
+    while(ipred < npred && tpred[ipred] < fac->t[0])
+      ipred++;
+
+    /* Interpolation */
+    for(idp = 0; idp < fac->ndp-1; idp++) {
+      off = idp * fac->nckern;
+      offn = (idp+1) * fac->nckern;
+
+      for(jckern = 0; jckern < fac->nckern; jckern++)
+        q[jckern] = (q[jckern] + z[idp] * fac->v[off+jckern]) * fac->phi[offn+jckern];
+
+      while(ipred < npred && tpred[ipred] < fac->t[idp+1]) {
+        offpred = ipred * fac->nkern;
+
+        mu = 0;
+        for(jkern = 0; jkern < fac->nkern; jkern++) {
+          aj = fac->kern[4*jkern];
+          bj = fac->kern[4*jkern+1];
+          cj = fac->kern[4*jkern+2];
+        
+          exparg = exp(-cj * (tpred[ipred]-fac->t[idp+1]));
+        
+          u = aj * cosarg[offpred+jkern] + bj * sinarg[offpred+jkern];
+          mu += q[2*jkern] * u * exparg;
+        
+          u = aj * sinarg[offpred+jkern] - bj * cosarg[offpred+jkern];
+          mu += q[2*jkern+1] * u * exparg;
+        }
+      
+        ypred[ipred] += mu;
+      
+        ipred++;
+      }
     }
 
-    ypred[ipred] = 0;
-  }
-  
-  /* Allocate workspace */
-  q = (double *) malloc(fac->nckern * sizeof(double));
-  if(!q)
-    goto error;
-
-  /* Forward pass: init Q */
-  for(jckern = 0; jckern < fac->nckern; jckern++)
-    q[jckern] = 0;
-
-  /* Extrapolation prior to start, all means are zero so just skip them */
-  ipred = 0;
-  while(ipred < npred && tpred[ipred] < fac->t[0])
-    ipred++;
-
-  /* Interpolation */
-  for(idp = 0; idp < fac->ndp-1; idp++) {
-    off = idp * fac->nckern;
-    offn = (idp+1) * fac->nckern;
+    /* Extrapolation after the end */
+    off = (fac->ndp-1) * fac->nckern;
 
     for(jckern = 0; jckern < fac->nckern; jckern++)
-      q[jckern] = (q[jckern] + z[idp] * fac->v[off+jckern]) * fac->phi[offn+jckern];
+      q[jckern] = q[jckern] + z[fac->ndp-1] * fac->v[off+jckern];
 
-    while(ipred < npred && tpred[ipred] < fac->t[idp+1]) {
+    while(ipred < npred) {
       offpred = ipred * fac->nkern;
-
+    
       mu = 0;
       for(jkern = 0; jkern < fac->nkern; jkern++) {
         aj = fac->kern[4*jkern];
         bj = fac->kern[4*jkern+1];
         cj = fac->kern[4*jkern+2];
-        
-        exparg = exp(-cj * (tpred[ipred]-fac->t[idp+1]));
-        
+      
+        exparg = exp(-cj * (tpred[ipred]-fac->t[fac->ndp-1]));
+      
         u = aj * cosarg[offpred+jkern] + bj * sinarg[offpred+jkern];
         mu += q[2*jkern] * u * exparg;
-        
+      
         u = aj * sinarg[offpred+jkern] - bj * cosarg[offpred+jkern];
         mu += q[2*jkern+1] * u * exparg;
       }
-      
+    
       ypred[ipred] += mu;
-      
+    
       ipred++;
     }
-  }
 
-  /* Extrapolation after the end */
-  off = (fac->ndp-1) * fac->nckern;
-
-  for(jckern = 0; jckern < fac->nckern; jckern++)
-    q[jckern] = q[jckern] + z[fac->ndp-1] * fac->v[off+jckern];
-
-  while(ipred < npred) {
-    offpred = ipred * fac->nkern;
-    
-    mu = 0;
-    for(jkern = 0; jkern < fac->nkern; jkern++) {
-      aj = fac->kern[4*jkern];
-      bj = fac->kern[4*jkern+1];
-      cj = fac->kern[4*jkern+2];
-      
-      exparg = exp(-cj * (tpred[ipred]-fac->t[fac->ndp-1]));
-      
-      u = aj * cosarg[offpred+jkern] + bj * sinarg[offpred+jkern];
-      mu += q[2*jkern] * u * exparg;
-      
-      u = aj * sinarg[offpred+jkern] - bj * cosarg[offpred+jkern];
-      mu += q[2*jkern+1] * u * exparg;
-    }
-    
-    ypred[ipred] += mu;
-    
-    ipred++;
-  }
-
-  /* Reverse pass: init Q */
-  for(jckern = 0; jckern < fac->nckern; jckern++)
-    q[jckern] = 0;
-  
-  /* Extrapolation off end, all means are zero so just skip them */
-  ipred = npred - 1;
-  while(ipred >= 0 && tpred[ipred] >= fac->t[fac->ndp-1])
-    ipred--;
-
-  /* Interpolation */
-  for(idp = fac->ndp-1; idp > 0; idp--) {
-    off = idp * fac->nckern;
-
+    /* Reverse pass: init Q */
     for(jckern = 0; jckern < fac->nckern; jckern++)
-      q[jckern] = (q[jckern] + z[idp] * fac->u[off+jckern]) * fac->phi[off+jckern];
+      q[jckern] = 0;
+  
+    /* Extrapolation off end, all means are zero so just skip them */
+    ipred = npred - 1;
+    while(ipred >= 0 && tpred[ipred] >= fac->t[fac->ndp-1])
+      ipred--;
 
-    while(ipred >= 0 && tpred[ipred] >= fac->t[idp-1]) {
+    /* Interpolation */
+    for(idp = fac->ndp-1; idp > 0; idp--) {
+      off = idp * fac->nckern;
+
+      for(jckern = 0; jckern < fac->nckern; jckern++)
+        q[jckern] = (q[jckern] + z[idp] * fac->u[off+jckern]) * fac->phi[off+jckern];
+
+      while(ipred >= 0 && tpred[ipred] >= fac->t[idp-1]) {
+        offpred = ipred * fac->nkern;
+
+        mu = 0;
+        for(jkern = 0; jkern < fac->nkern; jkern++) {
+          cj = fac->kern[4*jkern+2];
+        
+          exparg = exp(-cj * (fac->t[idp-1]-tpred[ipred]));
+        
+          v = cosarg[offpred+jkern];
+          mu += q[2*jkern] * v * exparg;
+        
+          v = sinarg[offpred+jkern];
+          mu += q[2*jkern+1] * v * exparg;
+        }
+      
+        ypred[ipred] += mu;
+      
+        ipred--;
+      }
+    }
+
+    /* Extrapolation off the bottom */
+    for(jckern = 0; jckern < fac->nckern; jckern++)
+      q[jckern] = q[jckern] + z[0] * fac->u[jckern];
+
+    while(ipred >= 0) {
       offpred = ipred * fac->nkern;
-
+    
       mu = 0;
       for(jkern = 0; jkern < fac->nkern; jkern++) {
         cj = fac->kern[4*jkern+2];
-        
-        exparg = exp(-cj * (fac->t[idp-1]-tpred[ipred]));
-        
+      
+        exparg = exp(-cj * (fac->t[0]-tpred[ipred]));
+      
         v = cosarg[offpred+jkern];
         mu += q[2*jkern] * v * exparg;
-        
+      
         v = sinarg[offpred+jkern];
         mu += q[2*jkern+1] * v * exparg;
       }
-      
+    
       ypred[ipred] += mu;
-      
+    
       ipred--;
     }
-  }
 
-  /* Extrapolation off the bottom */
-  for(jckern = 0; jckern < fac->nckern; jckern++)
-    q[jckern] = q[jckern] + z[0] * fac->u[jckern];
+    /* Covariance matrix, if requested (expensive) */
+    if(varpred) {
+      /* Allocate workspace for K(t,t*) */
+      ktt = (double *) malloc(npred * fac->ndp * sizeof(double));
+      ktp = (double *) malloc(npred * fac->ndp * sizeof(double));
+      if(!ktt || !ktp)
+        goto error;
 
-  while(ipred >= 0) {
-    offpred = ipred * fac->nkern;
-    
-    mu = 0;
-    for(jkern = 0; jkern < fac->nkern; jkern++) {
-      cj = fac->kern[4*jkern+2];
+      /* Form K(t,t*) directly using precomputed sin,cos tables.
+         Exponentials are computed for each element to avoid numerical
+         overflow rather than using precomputed ratios from "phi". */
+      for(ipred = 0; ipred < npred; ipred++) {
+        offpred = ipred * fac->nkern;
       
-      exparg = exp(-cj * (fac->t[0]-tpred[ipred]));
-      
-      v = cosarg[offpred+jkern];
-      mu += q[2*jkern] * v * exparg;
-      
-      v = sinarg[offpred+jkern];
-      mu += q[2*jkern+1] * v * exparg;
-    }
-    
-    ypred[ipred] += mu;
-    
-    ipred--;
-  }
-
-  /* Covariance matrix, if requested (expensive) */
-  if(varpred) {
-    /* Allocate workspace for K(t,t*) */
-    ktt = (double *) malloc(npred * fac->ndp * sizeof(double));
-    ktp = (double *) malloc(npred * fac->ndp * sizeof(double));
-    if(!ktt || !ktp)
-      goto error;
-
-    /* Form K(t,t*) directly using precomputed sin,cos tables.
-       Exponentials are computed for each element to avoid numerical
-       overflow rather than using precomputed ratios from "phi". */
-    for(ipred = 0; ipred < npred; ipred++) {
-      offpred = ipred * fac->nkern;
-      
-      for(idp = 0; idp < fac->ndp; idp++) {
-        off = idp * fac->nckern;
+        for(idp = 0; idp < fac->ndp; idp++) {
+          off = idp * fac->nckern;
         
-        sum = 0;
+          sum = 0;
 
-        for(jkern = 0; jkern < fac->nkern; jkern++) {
-          aj = fac->kern[4*jkern];
-          bj = fac->kern[4*jkern+1];
-          cj = fac->kern[4*jkern+2];
+          for(jkern = 0; jkern < fac->nkern; jkern++) {
+            aj = fac->kern[4*jkern];
+            bj = fac->kern[4*jkern+1];
+            cj = fac->kern[4*jkern+2];
 
-          /* tpred - t and sign */
-          dt = tpred[ipred] - fac->t[idp];
-          sgn = copysign(1.0, dt);
-          dt = fabs(dt);
+            /* tpred - t and sign */
+            dt = tpred[ipred] - fac->t[idp];
+            sgn = copysign(1.0, dt);
+            dt = fabs(dt);
           
-          /* exp(-cj * |tpred - t|) */
-          exparg = exp(-cj * dt);
+            /* exp(-cj * |tpred - t|) */
+            exparg = exp(-cj * dt);
 
-          /* cos(dj * |tpred - t|) = cos(dj * (tpred - t))
-             = cos(dj * tpred) * cos(dj * t) + sin(dj * tpred) * sin(dj * t) */
-          sum += aj * exparg * (cosarg[offpred+jkern] * fac->v[off+2*jkern] + sinarg[offpred+jkern] * fac->v[off+2*jkern+1]);
+            /* cos(dj * |tpred - t|) = cos(dj * (tpred - t))
+               = cos(dj * tpred) * cos(dj * t) + sin(dj * tpred) * sin(dj * t) */
+            sum += aj * exparg * (cosarg[offpred+jkern] * fac->v[off+2*jkern] + sinarg[offpred+jkern] * fac->v[off+2*jkern+1]);
 
-          /* sin(dj * |tpred - t|) = sgn(tpred - t) * sin(dj * (tpred - t))
-             noting sin(dj * (tpred - t))
-             = sin(dj * tpred) * cos(dj * t) - cos(dj * tpred) * sin(dj * t) */
-          sum += bj * exparg * sgn * (sinarg[offpred+jkern] * fac->v[off+2*jkern] - cosarg[offpred+jkern] * fac->v[off+2*jkern+1]);
+            /* sin(dj * |tpred - t|) = sgn(tpred - t) * sin(dj * (tpred - t))
+               noting sin(dj * (tpred - t))
+               = sin(dj * tpred) * cos(dj * t) - cos(dj * tpred) * sin(dj * t) */
+            sum += bj * exparg * sgn * (sinarg[offpred+jkern] * fac->v[off+2*jkern] - cosarg[offpred+jkern] * fac->v[off+2*jkern+1]);
+          }
+
+          ktt[ipred*fac->ndp + idp] = sum;
         }
-
-        ktt[ipred*fac->ndp + idp] = sum;
       }
-    }
 
-    /* Compute K^-1(t,t) K(t,t*) */
-    if(fsgp_apply(fac, ktt, ktp, npred))
-      goto error;
+      /* Compute K^-1(t,t) K(t,t*) */
+      if(fsgp_apply(fac, ktt, ktp, npred))
+        goto error;
 
-    /* Finally compute diagonal elements of covariance
-       = K(t*,t*) - K(t,t*) ktp 
-       = sumaj - K(t*,t)^T ktp */
-    for(ipred = 0; ipred < npred; ipred++) {
-      sum = 0;
+      /* Finally compute diagonal elements of covariance
+         = K(t*,t*) - K(t,t*) ktp 
+         = sumaj - K(t*,t)^T ktp */
+      for(ipred = 0; ipred < npred; ipred++) {
+        sum = 0;
       
-      for(idp = 0; idp < fac->ndp; idp++)
-        sum += ktt[ipred*fac->ndp + idp] * ktp[ipred*fac->ndp + idp];
+        for(idp = 0; idp < fac->ndp; idp++)
+          sum += ktt[ipred*fac->ndp + idp] * ktp[ipred*fac->ndp + idp];
 
-      varpred[ipred] = fac->sumaj - sum;
+        varpred[ipred] = fac->sumaj - sum;
+      }
+    
+      free((void *) ktt);
+      ktt = (double *) NULL;
+      free((void *) ktp);
+      ktp = (double *) NULL;
     }
     
-    free((void *) ktt);
-    ktt = (double *) NULL;
-    free((void *) ktp);
-    ktp = (double *) NULL;
+    free((void *) sinarg);
+    free((void *) cosarg);
+  
+    free((void *) q);
+  }
+  else {  /* special case predicting at the points used in the GP */
+    /* Check there aren't too many data points requested.
+       User is allowed to request less. */
+    if(npred > fac->ndp)
+      goto error;
+    
+    /* mu = y - yvar * z */
+    for(ipred = 0; ipred < npred; ipred++)
+      ypred[ipred] = y[ipred] - fac->yvar[ipred] * z[ipred];
+
+    /* Variance, if requested */
+    if(varpred) {
+      /* Allocate workspace */
+      ktt = (double *) malloc(fac->ndp * fac->ndp * sizeof(double));
+      ktp = (double *) malloc(fac->ndp * fac->ndp * sizeof(double));
+      if(!ktt || !ktp)
+        goto error;
+      
+      /* var = yvar - yvar (K^-1 I yvar) */
+      for(idp = 0; idp < fac->ndp; idp++) {
+        for(jdp = 0; jdp < idp; jdp++)
+          ktt[idp*fac->ndp+jdp] = 0;
+
+        ktt[idp*fac->ndp+idp] = fac->yvar[idp];
+
+        for(jdp = idp+1; jdp < fac->ndp; jdp++)
+          ktt[idp*fac->ndp+jdp] = 0;
+      }
+
+      if(fsgp_apply(fac, ktt, ktp, fac->ndp))
+        goto error;
+
+      for(ipred = 0; ipred < npred; ipred++)
+        varpred[ipred] = fac->yvar[ipred] * (1.0 - ktp[ipred*fac->ndp+ipred]);
+
+      free((void *) ktt);
+      ktt = (double *) NULL;
+      free((void *) ktp);
+      ktp = (double *) NULL;
+    }
   }
   
-  free((void *) sinarg);
-  free((void *) cosarg);
+  free((void *) z);
   
-  free((void *) q);
-
   return(0);
 
  error:
+  if(z)
+    free((void *) z);
   if(sinarg)
     free((void *) sinarg);
   if(cosarg)
@@ -704,6 +768,8 @@ void fsgp_free (struct fsgp_fac *fac) {
   fac->kern = (double *) NULL;
   free((void *) fac->t);
   fac->t = (double *) NULL;
+  free((void *) fac->yvar);
+  fac->yvar = (double *) NULL;
   
   free((void *) fac->phi);
   fac->phi = (double *) NULL;
