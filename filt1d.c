@@ -127,6 +127,26 @@ void filt1d_hanning (float *buf, unsigned char *mask, float *work,
     buf[i*nstride] = 0.25*(work[i]+2*work[i+1]+work[i+2]);
 }
 
+void filt1d_kernel (float *buf, unsigned char *mask, float *work,
+                    int npt, int nstride,
+                    float *kern, int nkern) {
+  float sum;
+  int i, po;
+
+  if(npt < 4 || npt <= nkern)
+    return;
+
+  filt1d_linear_prep(buf, mask, work, npt, nstride, nkern);
+
+  for(po = 0; po < npt; po++) {
+    sum = 0;
+    for(i = 0; i < nkern; i++)
+      sum += work[i+po] * kern[i];
+
+    buf[po*nstride] = sum;
+  }
+}
+  
 void filt1d_median (float *buf, unsigned char *mask, float *work,
                     int npt, int nstride, int nkern) {
   struct filt1d_median_sort_tmp sorttmp;

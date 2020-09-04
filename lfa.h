@@ -597,6 +597,9 @@ void filt1d_boxcar (float *buf, unsigned char *mask, float *work,
                     int npt, int nstride, int nkern);
 void filt1d_hanning (float *buf, unsigned char *mask, float *work,
                      int npt, int nstride);
+void filt1d_kernel (float *buf, unsigned char *mask, float *work,
+                    int npt, int nstride,
+                    float *kern, int nkern);
 void filt1d_median (float *buf, unsigned char *mask, float *work,
                     int npt, int nstride, int nkern);
 
