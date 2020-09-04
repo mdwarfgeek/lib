@@ -19,8 +19,8 @@ struct specfind_line {
   unsigned char flags;
 };
 
-int specfind (float *line, unsigned char *mask, int nx,
-              int minpix, float sky, float thresh,
+int specfind (float *line, float *filtline, unsigned char *mask, int nx,
+              int minpix, float sky, float thresh, int ioverlp,
               struct specfind_line **list, int *nlist);
 
 #endif  /* FIND_H */

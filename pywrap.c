@@ -3408,16 +3408,22 @@ static PyObject *lfa_specfind (PyObject *self,
                             "minpix",
                             "sky",
                             "thresh",
+                            "filtline",
                             "mask",
+                            "overlp",
                             NULL };
   PyObject *linearg;
+  PyObject *filtlinearg = NULL;
   PyObject *maskarg = NULL;
   int nx, minpix;
   float sky, thresh;
 
   PyObject *linearr = NULL;
+  PyObject *filtlinearr = NULL;
   PyObject *maskarr = NULL;
 
+  int ioverlp = 1;
+  
   struct lfa_specfind_list_object *slist = NULL;
   npy_intp outdim[1] = { 0 };
   PyObject *result = NULL;
@@ -3426,12 +3432,14 @@ static PyObject *lfa_specfind (PyObject *self,
   
   /* Get arguments */
   if(!PyArg_ParseTupleAndKeywords(args, kwds,
-                                  "Oiff|O", kwlist,
+                                  "Oiff|OOi", kwlist,
                                   &linearg,
                                   &minpix,
                                   &sky,
                                   &thresh,
-                                  &maskarg))
+                                  &filtlinearg,
+                                  &maskarg,
+                                  &ioverlp))
     return(NULL);
 
   linearr = PyArray_FROM_OTF(linearg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
@@ -3440,6 +3448,17 @@ static PyObject *lfa_specfind (PyObject *self,
 
   nx = PyArray_Size(linearr);
   
+  if(filtlinearg && filtlinearg != Py_None) {
+    filtlinearr = PyArray_FROM_OTF(filtlinearg, NPY_FLOAT, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!filtlinearr)
+      goto error;
+
+    if(PyArray_Size(filtlinearr) < nx) {
+      PyErr_SetString(PyExc_IndexError, "filtline too small");
+      goto error;
+    }
+  }
+
   if(maskarg && maskarg != Py_None) {
     maskarr = PyArray_FROM_OTF(maskarg, NPY_UINT8, NPY_IN_ARRAY | NPY_FORCECAST);
     if(!maskarr)
@@ -3461,15 +3480,17 @@ static PyObject *lfa_specfind (PyObject *self,
   slist->nlist = 0;
 
   if(specfind(PyArray_DATA(linearr),
+              filtlinearr ? PyArray_DATA(filtlinearr) : NULL,
               maskarr ? PyArray_DATA(maskarr) : NULL,
               nx,
-              minpix, sky, thresh,
+              minpix, sky, thresh, ioverlp,
               &(slist->list), &(slist->nlist))) {
     PyErr_SetString(PyExc_RuntimeError, "specfind");
     goto error;
   }
 
   Py_DECREF(linearr);
+  Py_XDECREF(filtlinearr);
   Py_XDECREF(maskarr);
 
   /* Build descriptor */
@@ -3499,6 +3520,7 @@ static PyObject *lfa_specfind (PyObject *self,
 
  error:
   Py_XDECREF(linearr);
+  Py_XDECREF(filtlinearr);
   Py_XDECREF(maskarr);
   Py_XDECREF((PyObject *) slist);
   Py_XDECREF(dtype);
@@ -3612,7 +3634,7 @@ static PyMethodDef lfa_methods[] = {
     "skylev, skyrms = ap_skyann(map, xcent, ycent, rinn, rout, mask=None, clip_low=-FLT_MAX, clip_high=3)" },
   { "specfind", (PyCFunction) lfa_specfind,
     METH_VARARGS | METH_KEYWORDS,
-    "sources = image(line, minpix, sky, thresh, mask=None)" },
+    "sources = specfind(line, minpix, sky, thresh, filtline=None, mask=None, overlp=1)" },
   { NULL, NULL, 0, NULL }
 };
 

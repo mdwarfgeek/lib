@@ -47,10 +47,10 @@ static int do_params (float *filtline, int xl, int xh,
                       int minpix, float zthr,
                       struct termlist *termlist);
 
-int specfind (float *line, unsigned char *mask, int nx,
-              int minpix, float sky, float thresh,
+int specfind (float *line, float *filtline, unsigned char *mask, int nx,
+              int minpix, float sky, float thresh, int ioverlp,
               struct specfind_line **list, int *nlist) {
-  float *filtline = (float *) NULL;
+  float *filtbuf = (float *) NULL;
   double zfilt, zthr;
   int x, xnext, npix;
 
@@ -71,10 +71,14 @@ int specfind (float *line, unsigned char *mask, int nx,
   termlist.nsources = 0;
   termlist.nalloc_sources = NEXTRA_SOURCES;
 
-  /* Line buffers */
-  ALLOC(filtline, nx, float);
-  if(!filtline)
-    goto error;
+  if(!filtline) {
+    /* Line buffers */
+    ALLOC(filtbuf, nx, float);
+    if(!filtbuf)
+      goto error;
+
+    filtline = filtbuf;
+  }
 
   /* Termination list */
   ALLOC(termlist.list, termlist.nalloc, struct term);
@@ -89,17 +93,19 @@ int specfind (float *line, unsigned char *mask, int nx,
   /* Scaled threshold */
   zthr = 4 * (sky + thresh);
 
-  if(mask) {
-    /* Compute filtered line */
-    for(x = 1; x < nx-1; x++)
-      filtline[x] = mask[x-1]*line[x-1]
-                  + 2*mask[x]*line[x]
-                  + mask[x+1]*line[x+1];
-  }
-  else {
-    /* Compute filtered line */
-    for(x = 1; x < nx-1; x++)
-      filtline[x] = line[x-1] + 2*line[x] + line[x+1];
+  if(filtbuf) {
+    if(mask) {
+      /* Compute filtered line */
+      for(x = 1; x < nx-1; x++)
+        filtline[x] = mask[x-1]*line[x-1]
+                    + 2*mask[x]*line[x]
+                    + mask[x+1]*line[x+1];
+    }
+    else {
+      /* Compute filtered line */
+      for(x = 1; x < nx-1; x++)
+        filtline[x] = line[x-1] + 2*line[x] + line[x+1];
+    }
   }
 
   for(x = 1; x < nx-1; x = xnext) {
@@ -120,10 +126,15 @@ int specfind (float *line, unsigned char *mask, int nx,
       npix = xnext - x;
 
       if(npix >= minpix) {
-        do_overlp(filtline, x, xnext-1,
-                  minpix, zthr,
-                  &termlist,
-                  0);
+        if(ioverlp)
+          do_overlp(filtline, x, xnext-1,
+                    minpix, zthr,
+                    &termlist,
+                    0);
+        else
+          do_params(filtline, x, xnext-1,
+                    minpix, zthr,
+                    &termlist);
       }
     }
   }
@@ -131,16 +142,19 @@ int specfind (float *line, unsigned char *mask, int nx,
   *list = termlist.sources;
   *nlist = termlist.nsources;
 
-  free((void *) filtline);
-  filtline = (float *) NULL;
+  if(filtbuf) {
+    free((void *) filtbuf);
+    filtbuf = (float *) NULL;
+  }
+    
   free((void *) termlist.list);
   termlist.list = (struct term *) NULL;
 
   return(0);
 
  error:
-  if(filtline)
-    free((void *) filtline);
+  if(filtbuf)
+    free((void *) filtbuf);
   if(termlist.list)
     free((void *) termlist.list);
   if(termlist.sources)
