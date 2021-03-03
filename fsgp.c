@@ -793,9 +793,11 @@ double fsgp_logdet (struct fsgp_fac *fac) {
 
 int fsgp_loglike (struct fsgp_fac *fac, double *y, double *loglike) {
   double *ztmp = (double *) NULL;
-  double sum, logdet;
+  double sum, logdet, logtwopi;
   int idp;
 
+  logtwopi = log(TWOPI);
+  
   ztmp = (double *) malloc(fac->ndp * sizeof(double));
   if(!ztmp)
     goto error;
@@ -809,7 +811,7 @@ int fsgp_loglike (struct fsgp_fac *fac, double *y, double *loglike) {
   for(idp = 0; idp < fac->ndp; idp++)
     sum += y[idp] * ztmp[idp];
 
-  *loglike = -0.5*(sum + logdet);
+  *loglike = -0.5*(sum + logdet + fac->ndp * logtwopi);
 
   free((void *) ztmp);
   
