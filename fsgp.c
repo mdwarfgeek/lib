@@ -615,8 +615,8 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
     /* Covariance matrix, if requested (expensive) */
     if(varpred) {
       /* Allocate workspace for K(t,t*) */
-      ktt = (double *) malloc(npred * fac->ndp * sizeof(double));
-      ktp = (double *) malloc(npred * fac->ndp * sizeof(double));
+      ktt = (double *) malloc(fac->ndp * sizeof(double));
+      ktp = (double *) malloc(fac->ndp * sizeof(double));
       if(!ktt || !ktp)
         goto error;
 
@@ -654,22 +654,20 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
             sum += bj * exparg * sgn * (sinarg[offpred+jkern] * fac->v[off+2*jkern] - cosarg[offpred+jkern] * fac->v[off+2*jkern+1]);
           }
 
-          ktt[ipred*fac->ndp + idp] = sum;
+          ktt[idp] = sum;
         }
-      }
 
-      /* Compute K^-1(t,t) K(t,t*) */
-      if(fsgp_apply(fac, ktt, ktp, npred))
-        goto error;
+        /* Compute K^-1(t,t) K(t,t*) */
+        if(fsgp_apply(fac, ktt, ktp, 1))
+          goto error;
 
-      /* Finally compute diagonal elements of covariance
-         = K(t*,t*) - K(t,t*) ktp 
-         = sumaj - K(t*,t)^T ktp */
-      for(ipred = 0; ipred < npred; ipred++) {
+        /* Finally compute diagonal elements of covariance
+           = K(t*,t*) - K(t,t*) ktp 
+           = sumaj - K(t*,t)^T ktp */
         sum = 0;
       
         for(idp = 0; idp < fac->ndp; idp++)
-          sum += ktt[ipred*fac->ndp + idp] * ktp[ipred*fac->ndp + idp];
+          sum += ktt[idp] * ktp[idp];
 
         varpred[ipred] = fac->sumaj - sum;
       }
