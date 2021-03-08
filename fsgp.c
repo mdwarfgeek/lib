@@ -636,9 +636,12 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
     }
     
     free((void *) sinarg);
+    sinarg = (double *) NULL;
     free((void *) cosarg);
+    cosarg = (double *) NULL;
   
     free((void *) q);
+    q = (double *) NULL;
   }
   else {  /* special case predicting at the points used in the GP */
     /* Check there aren't too many data points requested.
