@@ -282,149 +282,105 @@ int fsgp_compute (struct fsgp_fac *fac,
 
 /* Apply inverse of kernel */
 
-int fsgp_apply (struct fsgp_fac *fac, double *y, double *z, int nrhs) {
-  double *fg = (double *) NULL;
-  int irhs, offyz;
+static void fsgp_apply (struct fsgp_fac *fac, double *fg,
+                        double *y, double *z) {
   int idp, offp, off, jckern;
   double sum;
 
-  /* Allocate workspace */
-  fg = (double *) malloc(fac->nckern * sizeof(double));
-  if(!fg)
-    goto error;
-
-  for(irhs = 0; irhs < nrhs; irhs++) {
-    offyz = irhs * fac->ndp;
-  
-    /* Forward substitution */
-    for(jckern = 0; jckern < fac->nckern; jckern++)
-      fg[jckern] = 0;
+  /* Forward substitution */
+  for(jckern = 0; jckern < fac->nckern; jckern++)
+    fg[jckern] = 0;
     
-    z[offyz] = y[offyz];
+  z[0] = y[0];
     
-    for(idp = 1; idp < fac->ndp; idp++) {
-      offp = (idp-1) * fac->nckern;
-      off = idp * fac->nckern;
+  for(idp = 1; idp < fac->ndp; idp++) {
+    offp = (idp-1) * fac->nckern;
+    off = idp * fac->nckern;
       
-      sum = 0;
+    sum = 0;
       
-      for(jckern = 0; jckern < fac->nckern; jckern++) {
-        fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->w[offp+jckern] * z[offyz+idp-1]);
-        sum += fac->u[off+jckern] * fg[jckern];
-      }
-      
-      z[offyz+idp] = y[offyz+idp] - sum;
+    for(jckern = 0; jckern < fac->nckern; jckern++) {
+      fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->w[offp+jckern] * z[idp-1]);
+      sum += fac->u[off+jckern] * fg[jckern];
     }
-    
-    /* Back substitution */
-    for(jckern = 0; jckern < fac->nckern; jckern++)
-      fg[jckern] = 0;
-    
-    z[offyz+fac->ndp-1] /= fac->d[fac->ndp-1];
-    
-    for(idp = fac->ndp-1; idp > 0; idp--) {
-      offp = (idp-1) * fac->nckern;
-      off = idp * fac->nckern;
       
-      sum = 0;
-      
-      for(jckern = 0; jckern < fac->nckern; jckern++) {
-        fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->u[off+jckern] * z[offyz+idp]);
-        sum += fac->w[offp+jckern] * fg[jckern];
-      }
-      
-      z[offyz+idp-1] = z[offyz+idp-1] / fac->d[idp-1] - sum;
-    }
+    z[idp] = y[idp] - sum;
   }
-  
-  free((void *) fg);
-
-  return(0);
-
- error:
-  if(fg)
-    free((void *) fg);
-
-  return(-1);
+    
+  /* Back substitution */
+  for(jckern = 0; jckern < fac->nckern; jckern++)
+    fg[jckern] = 0;
+    
+  z[fac->ndp-1] /= fac->d[fac->ndp-1];
+    
+  for(idp = fac->ndp-1; idp > 0; idp--) {
+    offp = (idp-1) * fac->nckern;
+    off = idp * fac->nckern;
+      
+    sum = 0;
+      
+    for(jckern = 0; jckern < fac->nckern; jckern++) {
+      fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->u[off+jckern] * z[idp]);
+      sum += fac->w[offp+jckern] * fg[jckern];
+    }
+      
+    z[idp-1] = z[idp-1] / fac->d[idp-1] - sum;
+  }
 }
 
 /* Apply inverse of kernel to diagonal matrix */
 
-int fsgp_apply_diag (struct fsgp_fac *fac, double *yd, double *zd, int nd) {
-  double *fg = (double *) NULL;
-  double *z = (double *) NULL;
-  int irhs;
+static double fsgp_apply_diag (struct fsgp_fac *fac, double *fg, double *z,
+                               double yd, int irhs) {
   int idp, offp, off, jckern;
   double sum;
 
-  /* Allocate workspace */
-  fg = (double *) malloc(fac->nckern * sizeof(double));
-  z = (double *) malloc(fac->ndp * sizeof(double));
-  if(!fg || !z)
-    goto error;
-
-  for(irhs = 0; irhs < nd; irhs++) {
-    /* Generate this right-hand side */
-    for(idp = 0; idp < fac->ndp; idp++)
-      z[idp] = 0;
-
-    z[irhs] = yd[irhs];
-
-    /* Forward substitution */
-    for(jckern = 0; jckern < fac->nckern; jckern++)
-      fg[jckern] = 0;
+  /* Generate this right-hand side */
+  for(idp = 0; idp < fac->ndp; idp++)
+    z[idp] = 0;
+  
+  z[irhs] = yd;
+  
+  /* Forward substitution */
+  for(jckern = 0; jckern < fac->nckern; jckern++)
+    fg[jckern] = 0;
+  
+  for(idp = 1; idp < fac->ndp; idp++) {
+    offp = (idp-1) * fac->nckern;
+    off = idp * fac->nckern;
     
-    for(idp = 1; idp < fac->ndp; idp++) {
-      offp = (idp-1) * fac->nckern;
-      off = idp * fac->nckern;
-      
-      sum = 0;
-      
-      for(jckern = 0; jckern < fac->nckern; jckern++) {
-        fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->w[offp+jckern] * z[idp-1]);
-        sum += fac->u[off+jckern] * fg[jckern];
-      }
-      
-      z[idp] -= sum;
+    sum = 0;
+    
+    for(jckern = 0; jckern < fac->nckern; jckern++) {
+      fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->w[offp+jckern] * z[idp-1]);
+      sum += fac->u[off+jckern] * fg[jckern];
     }
     
-    /* Back substitution, only need to go until we've computed the
-       element of interest, so loop terminates early. */
-    for(jckern = 0; jckern < fac->nckern; jckern++)
-      fg[jckern] = 0;
-    
-    z[fac->ndp-1] /= fac->d[fac->ndp-1];
-    
-    for(idp = fac->ndp-1; idp > irhs; idp--) {
-      offp = (idp-1) * fac->nckern;
-      off = idp * fac->nckern;
-      
-      sum = 0;
-      
-      for(jckern = 0; jckern < fac->nckern; jckern++) {
-        fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->u[off+jckern] * z[idp]);
-        sum += fac->w[offp+jckern] * fg[jckern];
-      }
-      
-      z[idp-1] = z[idp-1] / fac->d[idp-1] - sum;
-    }
-
-    /* Output */
-    zd[irhs] = z[irhs];
+    z[idp] -= sum;
   }
   
-  free((void *) fg);
-  free((void *) z);
+  /* Back substitution, only need to go until we've computed the
+     element of interest, so loop terminates early. */
+  for(jckern = 0; jckern < fac->nckern; jckern++)
+    fg[jckern] = 0;
   
-  return(0);
+  z[fac->ndp-1] /= fac->d[fac->ndp-1];
+  
+  for(idp = fac->ndp-1; idp > irhs; idp--) {
+    offp = (idp-1) * fac->nckern;
+    off = idp * fac->nckern;
+    
+    sum = 0;
+    
+    for(jckern = 0; jckern < fac->nckern; jckern++) {
+      fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->u[off+jckern] * z[idp]);
+      sum += fac->w[offp+jckern] * fg[jckern];
+    }
+    
+    z[idp-1] = z[idp-1] / fac->d[idp-1] - sum;
+  }
 
- error:
-  if(fg)
-    free((void *) fg);
-  if(z)
-    free((void *) z);
-
-  return(-1);
+  return(z[irhs]);
 }
 
 /* "Predict" (interpolation/extrapolation) function based on result
@@ -433,6 +389,7 @@ int fsgp_apply_diag (struct fsgp_fac *fac, double *yd, double *zd, int nd) {
 int fsgp_predict (struct fsgp_fac *fac, double *y,
                   double *tpred, double *ypred, double *varpred, int npred) {
   double *z = (double *) NULL;
+  double *fg = (double *) NULL;
   
   double *sinarg = (double *) NULL;
   double *cosarg = (double *) NULL;
@@ -445,15 +402,16 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
 
   double *ktt = (double *) NULL;
   double *ktp = (double *) NULL;
-  double sum, dt, sgn;
+  double *ztmp = (double *) NULL;
+  double sum, dt, sgn, kv;
 
   /* Calculate z */
   z = (double *) malloc(fac->ndp * sizeof(double));
-  if(!z)
+  fg = (double *) malloc(fac->nckern * sizeof(double));
+  if(!z || !fg)
     goto error;
   
-  if(fsgp_apply(fac, y, z, 1))
-    goto error;
+  fsgp_apply(fac, fg, y, z);
   
   if(tpred) {    
     /* Precalculate sin, cos terms and initialize outputs */
@@ -658,8 +616,7 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
         }
 
         /* Compute K^-1(t,t) K(t,t*) */
-        if(fsgp_apply(fac, ktt, ktp, 1))
-          goto error;
+        fsgp_apply(fac, fg, ktt, ktp);
 
         /* Finally compute diagonal elements of covariance
            = K(t*,t*) - K(t,t*) ktp 
@@ -695,23 +652,33 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
 
     /* Variance, if requested */
     if(varpred) {
-      /* K^-1 I yvar */
-      if(fsgp_apply_diag(fac, fac->yvar, varpred, npred))
+      ztmp = (double *) malloc(fac->ndp * sizeof(double));
+      if(!ztmp)
         goto error;
 
-      /* var = yvar - yvar (K^-1 I yvar) */
-      for(ipred = 0; ipred < npred; ipred++)
-        varpred[ipred] = fac->yvar[ipred] * (1.0 - varpred[ipred]);
+      for(ipred = 0; ipred < npred; ipred++) {
+        /* K^-1 I yvar */
+        kv = fsgp_apply_diag(fac, fg, ztmp, fac->yvar[ipred], ipred);
+
+        /* var = yvar - yvar (K^-1 I yvar) */
+        varpred[ipred] = fac->yvar[ipred] * (1.0 - kv);
+      }
+      
+      free((void *) ztmp);
+      ztmp = (double *) NULL;
     }
   }
   
   free((void *) z);
+  free((void *) fg);
   
   return(0);
 
  error:
   if(z)
     free((void *) z);
+  if(fg)
+    free((void *) fg);
   if(sinarg)
     free((void *) sinarg);
   if(cosarg)
@@ -722,7 +689,9 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
     free((void *) ktt);
   if(ktp)
     free((void *) ktp);
-
+  if(ztmp)
+    free((void *) ztmp);
+  
   return(-1);
 }
 
@@ -791,17 +760,18 @@ double fsgp_logdet (struct fsgp_fac *fac) {
 
 int fsgp_loglike (struct fsgp_fac *fac, double *y, double *loglike) {
   double *ztmp = (double *) NULL;
+  double *fg = (double *) NULL;
   double sum, logdet, logtwopi;
   int idp;
 
   logtwopi = log(TWOPI);
   
   ztmp = (double *) malloc(fac->ndp * sizeof(double));
-  if(!ztmp)
+  fg = (double *) malloc(fac->nckern * sizeof(double));
+  if(!ztmp || !fg)
     goto error;
   
-  if(fsgp_apply(fac, y, ztmp, 1))
-    goto error;
+  fsgp_apply(fac, fg, y, ztmp);
   
   logdet = fsgp_logdet(fac);
   
@@ -812,12 +782,15 @@ int fsgp_loglike (struct fsgp_fac *fac, double *y, double *loglike) {
   *loglike = -0.5*(sum + logdet + fac->ndp * logtwopi);
 
   free((void *) ztmp);
+  free((void *) fg);
   
   return(0);
   
  error:
   if(ztmp)
     free((void *) ztmp);
+  if(fg)
+    free((void *) fg);
 
   return(-1);
 }
