@@ -836,19 +836,31 @@ static PyArray_Descr *lfa_ap_build_descr (void) {
 
   /* Populate */
   for(imemb = 0; imemb < nmemb; imemb++) {
+#if PY_MAJOR_VERSION >= 3
+    o = PyUnicode_FromString(members[imemb].name);
+#else
     o = PyString_FromString(members[imemb].name);
+#endif
     if(!o)
       goto error;
 
     PyList_SetItem(names, imemb, o);  /* list takes over our ref to o */
 
+#if PY_MAJOR_VERSION >= 3
+    o = PyUnicode_FromString(members[imemb].format);
+#else
     o = PyString_FromString(members[imemb].format);
+#endif
     if(!o)
       goto error;
 
     PyList_SetItem(formats, imemb, o);
 
+#if PY_MAJOR_VERSION >= 3
+    o = PyLong_FromSize_t(members[imemb].offset);
+#else
     o = PyInt_FromSize_t(members[imemb].offset);
+#endif
     if(!o)
       goto error;
 
@@ -869,7 +881,11 @@ static PyArray_Descr *lfa_ap_build_descr (void) {
   PyDict_SetItemString(d, "offsets", offsets);
   Py_DECREF(offsets);
 
+#if PY_MAJOR_VERSION >= 3
+  o = PyLong_FromSize_t(sizeof(struct ap_source));
+#else
   o = PyInt_FromSize_t(sizeof(struct ap_source));
+#endif
   if(!o)
     goto error;
 
@@ -3269,19 +3285,31 @@ static PyArray_Descr *lfa_specfind_build_descr (void) {
 
   /* Populate */
   for(imemb = 0; imemb < nmemb; imemb++) {
+#if PY_MAJOR_VERSION >= 3
+    o = PyUnicode_FromString(members[imemb].name);
+#else
     o = PyString_FromString(members[imemb].name);
+#endif
     if(!o)
       goto error;
 
     PyList_SetItem(names, imemb, o);  /* list takes over our ref to o */
 
+#if PY_MAJOR_VERSION >= 3
+    o = PyUnicode_FromString(members[imemb].format);
+#else
     o = PyString_FromString(members[imemb].format);
+#endif
     if(!o)
       goto error;
 
     PyList_SetItem(formats, imemb, o);
 
+#if PY_MAJOR_VERSION >= 3
+    o = PyLong_FromSize_t(members[imemb].offset);
+#else
     o = PyInt_FromSize_t(members[imemb].offset);
+#endif
     if(!o)
       goto error;
 
@@ -3302,7 +3330,11 @@ static PyArray_Descr *lfa_specfind_build_descr (void) {
   PyDict_SetItemString(d, "offsets", offsets);
   Py_DECREF(offsets);
 
+#if PY_MAJOR_VERSION >= 3
+  o = PyLong_FromSize_t(sizeof(struct specfind_line));
+#else
   o = PyInt_FromSize_t(sizeof(struct specfind_line));
+#endif
   if(!o)
     goto error;
 
