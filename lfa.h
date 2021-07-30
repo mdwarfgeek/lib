@@ -651,6 +651,15 @@ int iers_fetch (struct iers_table *tab, double mjd,
 
 double kepler (double ma, double ecc);
 
+/* -- lrmatch.c: likelihood ratio catalogue matching -- */
+
+int lrmatch (double *comx, double *comy,
+             double *comlogrank, double *comerr, int ncom,
+             double *refx, double *refy,
+             double *reflogrank, double *referr, int nref,
+             double searchrad, int sorted_y,
+             int *best_ref_for_com, int *best_com_for_ref);
+
 /* -- matvec.c: matrix and vector utilities */
 
 /* Makes Euler rotation matrices about "axis" */

@@ -3561,6 +3561,192 @@ static PyObject *lfa_specfind (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_lrmatch (PyObject *self,
+                              PyObject *args,
+                              PyObject *kwds) {
+  static char *kwlist[] = { "comx",
+                            "comy",
+                            "comlogrank",
+                            "comerr",
+                            "refx",
+                            "refy",
+                            "reflogrank",
+                            "referr",
+                            "searchrad",
+                            "sorted_y",
+                            NULL };
+  PyObject *comxarg;
+  PyObject *comyarg;
+  PyObject *comlogrankarg;
+  PyObject *comerrarg;
+  PyObject *refxarg;
+  PyObject *refyarg;
+  PyObject *reflogrankarg;
+  PyObject *referrarg;
+  double searchrad;
+  int sorted_y;
+
+  PyObject *comxarr = NULL;
+  PyObject *comyarr = NULL;
+  PyObject *comlogrankarr = NULL;
+  PyObject *comerrarr = NULL;
+  PyObject *refxarr = NULL;
+  PyObject *refyarr = NULL;
+  PyObject *reflogrankarr = NULL;
+  PyObject *referrarr = NULL;
+
+  PyObject *best_ref_for_com_arr = NULL;
+  PyObject *best_com_for_ref_arr = NULL;
+
+  int ncom, nref, rv;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "OOOOOOOOdi", kwlist,
+                                  &comxarg,
+                                  &comyarg,
+                                  &comlogrankarg,
+                                  &comerrarg,
+                                  &refxarg,
+                                  &refyarg,
+                                  &reflogrankarg,
+                                  &referrarg,
+                                  &searchrad,
+                                  &sorted_y))
+    return(NULL);
+
+  comxarr = PyArray_FROM_OTF(comxarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!comxarr)
+    goto error;
+
+  ncom = PyArray_Size(comxarr);
+
+  comyarr = PyArray_FROM_OTF(comyarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!comyarr)
+    goto error;
+
+  if(ncom != PyArray_Size(comyarr)) {
+    PyErr_SetString(PyExc_IndexError, "comx and comy differ in length");
+    goto error;
+  }
+  
+  if(comlogrankarg && comlogrankarg != Py_None) {
+    comlogrankarr = PyArray_FROM_OTF(comlogrankarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!comlogrankarr)
+      goto error;
+
+    if(ncom != PyArray_Size(comlogrankarr)) {
+      PyErr_SetString(PyExc_IndexError, "comx and comlogrank differ in length");
+      goto error;
+    }
+  }
+
+  if(comerrarg && comerrarg != Py_None) {
+    comerrarr = PyArray_FROM_OTF(comerrarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!comerrarr)
+      goto error;
+
+    if(ncom != PyArray_Size(comerrarr)) {
+      PyErr_SetString(PyExc_IndexError, "comx and comerr differ in length");
+      goto error;
+    }
+  }
+  
+  refxarr = PyArray_FROM_OTF(refxarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!refxarr)
+    goto error;
+
+  nref = PyArray_Size(refxarr);
+
+  refyarr = PyArray_FROM_OTF(refyarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!refyarr)
+    goto error;
+
+  if(nref != PyArray_Size(refyarr)) {
+    PyErr_SetString(PyExc_IndexError, "refx and refy differ in length");
+    goto error;
+  }
+  
+  if(reflogrankarg && reflogrankarg != Py_None) {
+    reflogrankarr = PyArray_FROM_OTF(reflogrankarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!reflogrankarr)
+      goto error;
+
+    if(nref != PyArray_Size(reflogrankarr)) {
+      PyErr_SetString(PyExc_IndexError, "refx and reflogrank differ in length");
+      goto error;
+    }
+  }
+
+  if(referrarg && referrarg != Py_None) {
+    referrarr = PyArray_FROM_OTF(referrarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!referrarr)
+      goto error;
+
+    if(nref != PyArray_Size(referrarr)) {
+      PyErr_SetString(PyExc_IndexError, "refx and referr differ in length");
+      goto error;
+    }
+  }
+
+  best_ref_for_com_arr = PyArray_SimpleNew(PyArray_NDIM(comxarr),
+                                           PyArray_DIMS(comxarr),
+                                           NPY_INT);
+  if(!best_ref_for_com_arr)
+    goto error;
+
+  best_com_for_ref_arr = PyArray_SimpleNew(PyArray_NDIM(refxarr),
+                                           PyArray_DIMS(refxarr),
+                                           NPY_INT);
+  if(!best_com_for_ref_arr)
+    goto error;
+
+  rv = lrmatch(PyArray_DATA(comxarr),
+               PyArray_DATA(comyarr),
+               comlogrankarr ? PyArray_DATA(comlogrankarr) : NULL,
+               comerrarr ? PyArray_DATA(comerrarr) : NULL,
+               ncom,
+               PyArray_DATA(refxarr),
+               PyArray_DATA(refyarr),
+               reflogrankarr ? PyArray_DATA(reflogrankarr) : NULL,
+               referrarr ? PyArray_DATA(referrarr) : NULL,
+               nref,
+               searchrad, sorted_y,
+               PyArray_DATA(best_ref_for_com_arr),
+               PyArray_DATA(best_com_for_ref_arr));
+  if(rv < 0) {
+    PyErr_SetString(PyExc_MemoryError, "lrmatch");
+    goto error;
+  }
+    
+  Py_DECREF(comxarr);
+  Py_DECREF(comyarr);
+  Py_XDECREF(comlogrankarr);
+  Py_XDECREF(comerrarr);
+  Py_DECREF(refxarr);
+  Py_DECREF(refyarr);
+  Py_XDECREF(reflogrankarr);
+  Py_XDECREF(referrarr);
+
+  return(Py_BuildValue("NN",
+                       PyArray_Return((PyArrayObject *) best_ref_for_com_arr),
+                       PyArray_Return((PyArrayObject *) best_com_for_ref_arr)));
+
+ error:
+  Py_XDECREF(comxarr);
+  Py_XDECREF(comyarr);
+  Py_XDECREF(comlogrankarr);
+  Py_XDECREF(comerrarr);
+  Py_XDECREF(refxarr);
+  Py_XDECREF(refyarr);
+  Py_XDECREF(reflogrankarr);
+  Py_XDECREF(referrarr);
+  PyArray_XDECREF_ERR((PyArrayObject *) best_ref_for_com_arr);
+  PyArray_XDECREF_ERR((PyArrayObject *) best_com_for_ref_arr);
+
+  return(NULL);
+}
+
 static PyMethodDef lfa_methods[] = {
   { "source_star_vec", (PyCFunction) lfa_source_star_vec,
     METH_VARARGS | METH_KEYWORDS,
@@ -3667,6 +3853,9 @@ static PyMethodDef lfa_methods[] = {
   { "specfind", (PyCFunction) lfa_specfind,
     METH_VARARGS | METH_KEYWORDS,
     "sources = specfind(line, minpix, sky, thresh, filtline=None, mask=None, overlp=1)" },
+  { "lrmatch", (PyCFunction) lfa_lrmatch,
+    METH_VARARGS | METH_KEYWORDS,
+    "best_ref_for_com, best_com_for_ref = lrmatch(comx, comy, comlogrank, comerr, refx, refy, reflogrank, referr, searchrad, sorted_y)" },
   { NULL, NULL, 0, NULL }
 };
 
