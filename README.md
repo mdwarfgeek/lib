@@ -33,8 +33,7 @@ path to this file.
 The IERS tables needed are finals2000A.data and tai-utc.dat.  They can
 be obtained from:
 
-ftp://maia.usno.navy.mil/ser7/                   (currently offline)  
-ftp://ftp.iers.org/products/eop/rapid/standard/  (finals files only)
+https://maia.usno.navy.mil/ser7/
 
 Set IERS_DATA to the directory containing these files.  If running a
 telescope or processing data regularly you may want to set up a cron
