@@ -162,7 +162,7 @@ void skylevel_image (float *map, unsigned char *mask, int npix,
   
   /* Accumulate pixels */
   for(p = 0; p < npix; p++) {
-    if(!mask || mask[p]) {
+    if((!mask || mask[p]) && isfinite(map[p])) {
       f = rintf(map[p]) + SKYLEVEL_DEFAULT_OFFSET;
       
       if(f < 0)
@@ -182,7 +182,9 @@ void skylevel_image (float *map, unsigned char *mask, int npix,
     }
   }
   
-  skylevel(hist, hmin, hmax, nhist, clip_low, clip_high, skylev, skynoise);
+  if(nhist > 0) {
+    skylevel(hist, hmin, hmax, nhist, clip_low, clip_high, skylev, skynoise);
 
-  *skylev -= SKYLEVEL_DEFAULT_OFFSET;
+    *skylev -= SKYLEVEL_DEFAULT_OFFSET;
+  }
 }

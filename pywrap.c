@@ -2857,10 +2857,17 @@ static PyObject *lfa_skylevel_image (PyObject *self,
   PyObject *maskarg = NULL;
   float clip_low = -FLT_MAX;
   float clip_high = 3.0;
-  float skylev, skynoise;
 
   PyObject *maparr = NULL;
   PyObject *maskarr = NULL;
+
+#ifdef NAN
+  float skylev = NAN;
+  float skynoise = NAN;
+#else
+  float skylev = strtod("NaN", (char *) NULL);
+  float skynoise = strtod("NaN", (char *) NULL);
+#endif
 
   /* Get arguments */
   if(!PyArg_ParseTupleAndKeywords(args, kwds,

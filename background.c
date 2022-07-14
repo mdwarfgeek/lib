@@ -101,7 +101,7 @@ int backremove (float *mapin, unsigned char *mask, float *mapout,
         for(x = 0; x < nbsizex; x++) {
           p = (oy+y)*nx + (ox+x);
 
-          if(!mask || mask[p]) {
+          if((!mask || mask[p]) && isfinite(mapin[p])) {
             f = rintf(mapin[p]) + SKYLEVEL_DEFAULT_OFFSET;
 
             if(f < 0)
