@@ -39,6 +39,11 @@ struct lfa_ap_object {
   PyArray_Descr *dtype;
 };
 
+struct lfa_fsgp_object {
+  PyObject_HEAD
+  struct fsgp_fac fac;
+};
+
 static int lfa_source_init (struct lfa_source_object *self,
                             PyObject *args,
                             PyObject *kwds) {
@@ -3754,6 +3759,527 @@ static PyObject *lfa_lrmatch (PyObject *self,
   return(NULL);
 }
 
+static PyObject *lfa_fsgp_kern_sho (PyObject *self,
+                                    PyObject *args,
+                                    PyObject *kwds) {
+  static char *kwlist[] = { "s0",
+                            "w0",
+                            "q",
+                            NULL };
+
+  double s0, w0, q;
+  double ktmp[8];
+  int nkern;
+
+  PyObject *kernarr = NULL;
+  npy_intp outdim[2] = { 0, 4 };
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "ddd", kwlist,
+                                  &s0, &w0, &q))
+    return(NULL);
+
+  nkern = fsgp_kern_sho(s0, w0, q, ktmp);
+
+  outdim[0] = nkern;
+
+  kernarr = PyArray_SimpleNew(2, outdim, NPY_DOUBLE);
+  if(!kernarr)
+    goto error;
+
+  memcpy(PyArray_DATA(kernarr), ktmp, PyArray_Size(kernarr) * sizeof(double));
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) kernarr)));
+
+ error:
+  Py_XDECREF(kernarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) kernarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_fsgp_kern_matern (PyObject *self,
+                                       PyObject *args,
+                                       PyObject *kwds) {
+  static char *kwlist[] = { "var",
+                            "rho",
+                            "eps",
+                            NULL };
+
+  double var, rho, eps = 1.0e-3;
+
+  PyObject *kernarr = NULL;
+  npy_intp outdim[2] = { 1, 4 };
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "dd|d", kwlist,
+                                  &var, &rho, &eps))
+    return(NULL);
+
+  kernarr = PyArray_SimpleNew(2, outdim, NPY_DOUBLE);
+  if(!kernarr)
+    goto error;
+
+  (void) fsgp_kern_matern(var, rho, eps, PyArray_DATA(kernarr));
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) kernarr)));
+
+ error:
+  Py_XDECREF(kernarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) kernarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_fsgp_new (PyTypeObject *type,
+                               PyObject *args,
+                               PyObject *kwds) {
+  struct lfa_fsgp_object *self = NULL;
+
+  /* Allocate */
+  self = (struct lfa_fsgp_object *) type->tp_alloc(type, 0);
+  return((PyObject *) self);
+}
+
+static void lfa_fsgp_dealloc (struct lfa_fsgp_object *self) {
+  fsgp_free(&(self->fac));
+  Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
+static int lfa_fsgp_compute (struct lfa_fsgp_object *self,
+                             PyObject *args,
+                             PyObject *kwds) {
+  static char *kwlist[] = { "kern",
+                            "t",
+                            "yerr",
+                            NULL };
+  PyObject *kernarg;
+  PyObject *kernarr = NULL;
+  PyObject *targ;
+  PyObject *tarr = NULL;
+  PyObject *yerrarg;
+  PyObject *yerrarr = NULL;
+
+  int nkern = 1, ndim;
+  npy_intp *dims;
+  int ndp;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "OOO", kwlist,
+                                  &kernarg, &targ, &yerrarg))
+    return(-1);
+    
+  kernarr = PyArray_FROM_OTF(kernarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!kernarr)
+    goto error;
+
+  ndim = PyArray_NDIM(kernarr);
+  dims = PyArray_DIMS(kernarr);
+
+  if(ndim == 1) {
+    nkern = 1;
+    if(dims[0] != 4) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'kern' dimension != 4");
+      goto error;
+    }
+  }
+  else if(ndim == 2) {
+    nkern = dims[0];
+    if(dims[1] != 4) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'kern' second dimension != 4");
+      goto error;
+    }
+  }
+  else {
+    PyErr_SetString(PyExc_IndexError,
+                    "don't understand shape of array 'kern'");
+    goto error;
+  }
+
+  tarr = PyArray_FROM_OTF(targ, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!tarr)
+    goto error;
+
+  ndp = PyArray_Size(tarr);
+
+  yerrarr = PyArray_FROM_OTF(yerrarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!yerrarr)
+    goto error;
+
+  if(PyArray_Size(yerrarr) != ndp) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'yerr' is not the same size as 't'");
+    goto error;
+  }
+
+  if(fsgp_compute(&(self->fac),
+                  PyArray_DATA(kernarr),
+                  nkern,
+                  PyArray_DATA(tarr),
+                  PyArray_DATA(yerrarr),
+                  ndp)) {
+    PyErr_SetString(PyExc_MemoryError, "fsgp_compute");
+    goto error;
+  }
+
+  Py_DECREF(kernarr);
+  Py_DECREF(tarr);
+  Py_DECREF(yerrarr);
+
+  return(0);
+
+error:
+  Py_XDECREF(kernarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) kernarr);
+  Py_XDECREF(tarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) tarr);
+  Py_XDECREF(yerrarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yerrarr);
+
+  return(-1);
+}
+
+static PyObject *lfa_fsgp_logdet (struct lfa_fsgp_object *self,
+                                  PyObject *args,
+                                  PyObject *kwds) {
+  double logdet;
+  logdet = fsgp_logdet(&(self->fac));
+  return(Py_BuildValue("d", logdet));
+}
+
+static PyObject *lfa_fsgp_loglike (struct lfa_fsgp_object *self,
+                                   PyObject *args,
+                                   PyObject *kwds) {
+  static char *kwlist[] = { "y",
+                            NULL };
+  PyObject *yarg;
+  PyObject *yarr = NULL;
+
+  double loglike;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O", kwlist,
+                                  &yarg))
+    return(NULL);
+    
+  yarr = PyArray_FROM_OTF(yarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!yarr)
+    goto error;
+
+  if(PyArray_Size(yarr) != self->fac.ndp) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'y' size != number of data points");
+    goto error;
+  }
+
+  if(fsgp_loglike(&(self->fac),
+                  PyArray_DATA(yarr),
+                  &loglike)) {
+    PyErr_SetString(PyExc_MemoryError, "fsgp_loglike");
+    goto error;
+  }
+
+  Py_DECREF(yarr);
+
+  return(Py_BuildValue("d", loglike));
+
+error:
+  Py_XDECREF(yarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_fsgp_predict (struct lfa_fsgp_object *self,
+                                   PyObject *args,
+                                   PyObject *kwds) {
+  static char *kwlist[] = { "y",
+                            "tpred",
+                            "return_var",
+                            NULL };
+  PyObject *yarg;
+  PyObject *yarr = NULL;
+  int npred, ndim;
+  npy_intp *dims;
+
+  PyObject *tpredarg = NULL;
+  PyObject *tpredarr = NULL;
+
+  PyObject *ypredarr = NULL;
+  PyObject *varpredarr = NULL;
+
+  unsigned char return_var = 0;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O|Ob", kwlist,
+                                  &yarg, &tpredarg, &return_var))
+    return(NULL);
+    
+  yarr = PyArray_FROM_OTF(yarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!yarr)
+    goto error;
+
+  if(PyArray_Size(yarr) != self->fac.ndp) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'y' size != number of data points");
+    goto error;
+  }
+
+  if(tpredarg && tpredarg != Py_None) {
+    tpredarr = PyArray_FROM_OTF(tpredarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+    if(!tpredarr)
+      goto error;
+
+    npred = PyArray_Size(tpredarr);
+    ndim = PyArray_NDIM(tpredarr);
+    dims = PyArray_DIMS(tpredarr);
+  }
+  else {
+    npred = PyArray_Size(yarr);
+    ndim = PyArray_NDIM(yarr);
+    dims = PyArray_DIMS(yarr);
+  }
+
+  ypredarr = PyArray_SimpleNew(ndim, dims, NPY_DOUBLE);
+  if(!ypredarr)
+    goto error;
+
+  if(return_var) {
+    varpredarr = PyArray_SimpleNew(ndim, dims, NPY_DOUBLE);
+    if(!varpredarr)
+      goto error;
+  }
+
+  fsgp_predict(&(self->fac),
+               PyArray_DATA(yarr),
+               tpredarr ? PyArray_DATA(tpredarr) : NULL,
+               PyArray_DATA(ypredarr),
+               varpredarr ? PyArray_DATA(varpredarr) : NULL,
+               npred);
+
+  Py_DECREF(yarr);
+  Py_XDECREF(tpredarr);
+
+  if(return_var)
+    return(Py_BuildValue("NN",
+                         PyArray_Return((PyArrayObject *) ypredarr),
+                         PyArray_Return((PyArrayObject *) varpredarr)));
+  else
+    return(Py_BuildValue("N",
+                         PyArray_Return((PyArrayObject *) ypredarr)));
+
+error:
+  Py_XDECREF(yarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
+  Py_XDECREF(tpredarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) tpredarr);
+  Py_XDECREF(ypredarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) ypredarr);
+  Py_XDECREF(varpredarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) varpredarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_fsgp_residual (struct lfa_fsgp_object *self,
+                                    PyObject *args,
+                                    PyObject *kwds) {
+  static char *kwlist[] = { "y",
+                            NULL };
+  PyObject *yarg;
+  PyObject *yarr = NULL;
+  int nrhs = 1, ndim;
+  npy_intp *dims;
+
+  PyObject *zarr = NULL;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O", kwlist,
+                                  &yarg))
+    return(NULL);
+    
+  yarr = PyArray_FROM_OTF(yarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!yarr)
+    goto error;
+
+  ndim = PyArray_NDIM(yarr);
+  dims = PyArray_DIMS(yarr);
+
+  if(ndim == 1) {
+    nrhs = 1;
+    if(dims[0] != self->fac.ndp) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'y' dimension != number of data points");
+      goto error;
+    }
+  }
+  else if(ndim == 2) {
+    nrhs = dims[0];
+    if(dims[1] != self->fac.ndp) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'y' second dimension != number of data points");
+      goto error;
+    }
+  }
+  else {
+    PyErr_SetString(PyExc_IndexError,
+                    "don't understand shape of array 'y'");
+    goto error;
+  }
+
+  zarr = PyArray_SimpleNew(ndim, dims, NPY_DOUBLE);
+  if(!zarr)
+    goto error;
+
+  fsgp_residual(&(self->fac),
+                PyArray_DATA(yarr),
+                PyArray_DATA(zarr),
+                nrhs);
+
+  Py_DECREF(yarr);
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) zarr)));
+
+error:
+  Py_XDECREF(yarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
+  Py_XDECREF(zarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) zarr);
+
+  return(NULL);
+}
+
+static PyObject *lfa_fsgp_sample (struct lfa_fsgp_object *self,
+                                  PyObject *args,
+                                  PyObject *kwds) {
+  static char *kwlist[] = { "q",
+                            NULL };
+  PyObject *qarg;
+  PyObject *qarr = NULL;
+  int ndim;
+  npy_intp *dims;
+
+  PyObject *yarr = NULL;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O", kwlist,
+                                  &qarg))
+    return(NULL);
+    
+  qarr = PyArray_FROM_OTF(qarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!qarr)
+    goto error;
+
+  if(PyArray_Size(qarr) != self->fac.ndp) {
+    PyErr_SetString(PyExc_IndexError,
+                    "array 'q' size != number of data points");
+    goto error;
+  }
+
+  ndim = PyArray_NDIM(qarr);
+  dims = PyArray_DIMS(qarr);
+
+  yarr = PyArray_SimpleNew(ndim, dims, NPY_DOUBLE);
+  if(!yarr)
+    goto error;
+
+  if(fsgp_sample(&(self->fac),
+                 PyArray_DATA(qarr),
+                 PyArray_DATA(yarr))) {
+    PyErr_SetString(PyExc_MemoryError, "fsgp_sample");
+    goto error;
+  }
+
+  Py_DECREF(qarr);
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) yarr)));
+
+error:
+  Py_XDECREF(qarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) qarr);
+  Py_XDECREF(yarr);
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
+
+  return(NULL);
+}
+
+static PyMemberDef lfa_fsgp_members[] = {
+  { NULL, 0, 0, 0, NULL }
+};
+
+static PyMethodDef lfa_fsgp_methods[] = {
+  { "logdet", (PyCFunction) lfa_fsgp_logdet,
+    METH_VARARGS | METH_KEYWORDS,
+    "logdet = logdet()" },
+  { "loglike", (PyCFunction) lfa_fsgp_loglike,
+    METH_VARARGS | METH_KEYWORDS,
+    "loglike = loglike(y)" },
+  { "predict", (PyCFunction) lfa_fsgp_predict,
+    METH_VARARGS | METH_KEYWORDS,
+    "z = predict(y, tpred=None, return_var=False)" },
+  { "residual", (PyCFunction) lfa_fsgp_residual,
+    METH_VARARGS | METH_KEYWORDS,
+    "z = residual(y)" },
+  { "sample", (PyCFunction) lfa_fsgp_sample,
+    METH_VARARGS | METH_KEYWORDS,
+    "y = sample(q)" },
+  { NULL, NULL, 0, NULL }
+};
+
+static PyTypeObject lfa_fsgp_type = {
+  PyVarObject_HEAD_INIT(NULL, 0)
+  "lfa.fsgp",                          /* tp_name */
+  sizeof(struct lfa_fsgp_object),      /* tp_basicsize */
+  0,                                   /* tp_itemsize */
+  (destructor) lfa_fsgp_dealloc,       /* tp_dealloc */
+  0,                                   /* tp_print */
+  0,                                   /* tp_getattr */
+  0,                                   /* tp_setattr */
+  0,                                   /* tp_compare */
+  0,                                   /* tp_repr */
+  0,                                   /* tp_as_number */
+  0,                                   /* tp_as_sequence */
+  0,                                   /* tp_as_mapping */
+  0,                                   /* tp_hash */
+  0,                                   /* tp_call */
+  0,                                   /* tp_str */
+  0,                                   /* tp_getattro */
+  0,                                   /* tp_setattro */
+  0,                                   /* tp_as_buffer */
+  Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
+  "fsgp structure",                    /* tp_doc */
+  0,                                   /* tp_traverse */
+  0,                                   /* tp_clear */
+  0,                                   /* tp_richcompare */
+  0,                                   /* tp_weaklistoffset */
+  0,                                   /* tp_iter */
+  0,                                   /* tp_iternext */
+  lfa_fsgp_methods,                    /* tp_methods */
+  lfa_fsgp_members,                    /* tp_members */
+  0,                                   /* tp_getset */
+  0,                                   /* tp_base */
+  0,                                   /* tp_dict */
+  0,                                   /* tp_descr_get */
+  0,                                   /* tp_descr_set */
+  0,                                   /* tp_dictoffset */
+  (initproc) lfa_fsgp_compute,         /* tp_init */
+  0,                                   /* tp_alloc */
+  lfa_fsgp_new                         /* tp_new */
+};
+
 static PyMethodDef lfa_methods[] = {
   { "source_star_vec", (PyCFunction) lfa_source_star_vec,
     METH_VARARGS | METH_KEYWORDS,
@@ -3863,6 +4389,12 @@ static PyMethodDef lfa_methods[] = {
   { "lrmatch", (PyCFunction) lfa_lrmatch,
     METH_VARARGS | METH_KEYWORDS,
     "best_ref_for_com, best_com_for_ref = lrmatch(comx, comy, comlogrank, comerr, refx, refy, reflogrank, referr, searchrad, sorted_y)" },
+  { "fsgp_kern_sho", (PyCFunction) lfa_fsgp_kern_sho,
+    METH_VARARGS | METH_KEYWORDS,
+    "kern = fsgp_kern_sho(s0, w0, q)" },
+  { "fsgp_kern_matern", (PyCFunction) lfa_fsgp_kern_matern,
+    METH_VARARGS | METH_KEYWORDS,
+    "kern = fsgp_kern_matern(var, rho, eps=1.0e-3)" },
   { NULL, NULL, 0, NULL }
 };
 
@@ -4063,6 +4595,12 @@ PyMODINIT_FUNC initlfa (void) {
 
   if(PyType_Ready(&lfa_specfind_list_type) < 0)
     goto error;
+
+  if(PyType_Ready(&lfa_fsgp_type) < 0)
+    goto error;
+
+  Py_INCREF(&lfa_fsgp_type);
+  PyModule_AddObject(m, "fsgp", (PyObject *) &lfa_fsgp_type);
 
 #if PY_MAJOR_VERSION >= 3
   return(m);

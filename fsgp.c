@@ -123,6 +123,7 @@ int fsgp_compute (struct fsgp_fac *fac,
   double *v = (double *) NULL;
   double *w = (double *) NULL;
   double *d = (double *) NULL;
+  double *sqrtd = (double *) NULL;
   double *s = (double *) NULL;
   int nckern;
   int idp, offp, off, jkern, jckern, kckern;
@@ -140,8 +141,10 @@ int fsgp_compute (struct fsgp_fac *fac,
   v = (double *) malloc(ndp*nckern * sizeof(double));
   w = (double *) malloc(ndp*nckern * sizeof(double));
   d = (double *) malloc(ndp * sizeof(double));
+  sqrtd = (double *) malloc(ndp * sizeof(double));
   s = (double *) malloc(nckern*nckern * sizeof(double));
-  if(!kerncopy || !tcopy || !yvar || !phi || !u || !v || !w || !d || !s)
+  if(!kerncopy || !tcopy || !yvar || !phi || !u || !v || !w ||
+     !sqrtd || !d || !s)
     goto error;
 
   /* Copies of inputs needed for "predict" operation */
@@ -159,6 +162,7 @@ int fsgp_compute (struct fsgp_fac *fac,
   /* First term */
   yvar[0] = yerr[0]*yerr[0];
   d[0] = yvar[0] + sumaj;
+  sqrtd[0] = sqrt(d[0]);
 
   for(jkern = 0; jkern < nkern; jkern++) {
     aj = kern[4*jkern];
@@ -224,6 +228,7 @@ int fsgp_compute (struct fsgp_fac *fac,
     /* Calculate D */
     yvar[idp] = yerr[idp]*yerr[idp];
     d[idp] = yvar[idp] + sumaj - sum;
+    sqrtd[idp] = sqrt(d[idp]);
 
     /* Calculate W */
     for(jckern = 0; jckern < nckern; jckern++) {
@@ -251,6 +256,7 @@ int fsgp_compute (struct fsgp_fac *fac,
   fac->v = v;
   fac->w = w;
   fac->d = d;
+  fac->sqrtd = sqrtd;
   fac->nkern = nkern;
   fac->nckern = nckern;
   fac->ndp = ndp;
@@ -274,6 +280,8 @@ int fsgp_compute (struct fsgp_fac *fac,
     free((void *) w);
   if(d)
     free((void *) d);
+  if(sqrtd)
+    free((void *) sqrtd);
   if(s)
     free((void *) s);
 
@@ -698,6 +706,70 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
   return(-1);
 }
 
+/* Return weighted residuals.
+   Apply Cholesky decomposition of kernel, such that
+   K = C C^T, or C = L D^1/2
+   then
+   y = C z
+   and we can solve for z by forward substitution.  The quantity z is
+   what is needed when using non-linear least-squares, the weighted
+   residual, where the "model part" of the log likelihood is half of
+   the sum of squares of this quantity.  This separate routine can be
+   used to implement non-linear least-squares fitting with a GP if the
+   hyperparameters are fixed. */
+
+int fsgp_residual (struct fsgp_fac *fac,
+                   double *y, double *z, int nrhs) {
+  double *fg = (double *) NULL;
+
+  int irhs, idp, offp, off, jckern;
+  double *thisy, *thisz, sum;
+
+  /* Allocate workspace */
+  fg = (double *) malloc(fac->nckern * sizeof(double));
+  if(!fg)
+    goto error;
+
+  for(irhs = 0; irhs < nrhs; irhs++) {
+    thisy = y + irhs * fac->ndp;
+    thisz = z + irhs * fac->ndp;
+
+    /* Forward substitution */
+    for(jckern = 0; jckern < fac->nckern; jckern++)
+      fg[jckern] = 0;
+    
+    thisz[0] = thisy[0];
+    
+    for(idp = 1; idp < fac->ndp; idp++) {
+      offp = (idp-1) * fac->nckern;
+      off = idp * fac->nckern;
+      
+      sum = 0;
+      
+      for(jckern = 0; jckern < fac->nckern; jckern++) {
+        fg[jckern] = fac->phi[off+jckern] * (fg[jckern] + fac->w[offp+jckern] * thisz[idp-1]);
+        sum += fac->u[off+jckern] * fg[jckern];
+      }
+      
+      thisz[idp] = (thisy[idp] - sum);
+    }
+
+    /* Divide by square root of diagonal */
+    for(idp = 0; idp < fac->ndp; idp++)
+      thisz[idp] /= fac->sqrtd[idp];
+  }
+
+  free((void *) fg);
+
+  return(0);
+
+ error:
+  if(fg)
+    free((void *) fg);
+
+  return(-1);
+}
+
 /* Sample from GP given vector of standard Gaussian deviates q,
    returns result in y for zero mean. */
 
@@ -714,7 +786,7 @@ int fsgp_sample (struct fsgp_fac *fac, double *q, double *y) {
   for(jckern = 0; jckern < fac->nckern; jckern++)
     fg[jckern] = 0;
   
-  sqrtd = sqrt(fac->d[0]);
+  sqrtd = fac->sqrtd[0];
 
   y[0] = sqrtd * q[0];
   
@@ -729,7 +801,7 @@ int fsgp_sample (struct fsgp_fac *fac, double *q, double *y) {
       sum += fac->u[off+jckern] * fg[jckern];
     }
     
-    sqrtd = sqrt(fac->d[idp]);
+    sqrtd = fac->sqrtd[idp];
 
     y[idp] = y[idp] * sqrtd + sum;
   }
@@ -816,4 +888,6 @@ void fsgp_free (struct fsgp_fac *fac) {
   fac->w = (double *) NULL;
   free((void *) fac->d);
   fac->d = (double *) NULL;
+  free((void *) fac->sqrtd);
+  fac->sqrtd = (double *) NULL;
 }

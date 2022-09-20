@@ -195,6 +195,7 @@ struct fsgp_fac {
   double *v;  /* vbar */
   double *w;  /* wbar */
   double *d;
+  double *sqrtd;
 
   /* Sizes */
   int nkern;
@@ -593,6 +594,8 @@ int fsgp_compute (struct fsgp_fac *fac,
                   double *t, double *yerr, int ndp);
 int fsgp_predict (struct fsgp_fac *fac, double *y,
                   double *tpred, double *ypred, double *varpred, int npred);
+int fsgp_residual (struct fsgp_fac *fac,
+                   double *y, double *z, int nrhs);
 int fsgp_sample (struct fsgp_fac *fac, double *q, double *y);
 double fsgp_logdet (struct fsgp_fac *fac);
 int fsgp_loglike (struct fsgp_fac *fac, double *y, double *loglike);
