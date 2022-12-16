@@ -130,6 +130,10 @@ int fsgp_compute (struct fsgp_fac *fac,
   double aj, bj, cj, dj, sinarg, cosarg, exparg, sumaj;
   double sum;
   
+  /* Return error if there are no data points */
+  if(ndp < 1)
+    return(-1);
+
   nckern = 2*nkern;
 
   /* Allocate arrays */
@@ -412,6 +416,10 @@ int fsgp_predict (struct fsgp_fac *fac, double *y,
   double *ktp = (double *) NULL;
   double *ztmp = (double *) NULL;
   double sum, dt, sgn, kv;
+
+  /* Get out of here if there's no work to do */
+  if(npred < 1)
+    return(0);
 
   /* Calculate z */
   z = (double *) malloc(fac->ndp * sizeof(double));
@@ -724,6 +732,10 @@ int fsgp_residual (struct fsgp_fac *fac,
 
   int irhs, idp, offp, off, jckern;
   double *thisy, *thisz, sum;
+
+  /* Get out of here if there's no work to do */
+  if(nrhs < 1)
+    return(0);
 
   /* Allocate workspace */
   fg = (double *) malloc(fac->nckern * sizeof(double));
