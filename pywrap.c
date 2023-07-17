@@ -11,6 +11,20 @@
 #include "specfind.h"
 #include "lfa.h"
 
+/* This macro, which was recommended by all of the documentation back
+ * when I wrote this module, was deprecated in Numpy API 1.14 and
+ * removed in 1.24.  There seems to be no good reason for removing it
+ * as far as I can tell, especially when the recommended replacement
+ * is two lines rather than one and uses a function that was brand new
+ * in 1.14 so isn't backwards compatible.  We therefore just restore
+ * the macro using the currently recommended method so we can retain
+ * compatibility with pre-1.14 numpy API. */
+#ifndef PyArray_XDECREF_ERR
+#define PyArray_XDECREF_ERR(o)                                  \
+  PyArray_DiscardWritebackIfCopy((PyArrayObject *) (o));        \
+  Py_XDECREF(o)
+#endif
+
 /* Macros to help me not get confused about y,x in numpy 2D arrays */
 #define DIM_Y  0
 #define DIM_X  1
@@ -3794,8 +3808,7 @@ static PyObject *lfa_fsgp_kern_sho (PyObject *self,
                        PyArray_Return((PyArrayObject *) kernarr)));
 
  error:
-  Py_XDECREF(kernarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) kernarr);
+  PyArray_XDECREF_ERR(kernarr);
 
   return(NULL);
 }
@@ -3829,8 +3842,7 @@ static PyObject *lfa_fsgp_kern_matern (PyObject *self,
                        PyArray_Return((PyArrayObject *) kernarr)));
 
  error:
-  Py_XDECREF(kernarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) kernarr);
+  PyArray_XDECREF_ERR(kernarr);
 
   return(NULL);
 }
@@ -3937,11 +3949,8 @@ static int lfa_fsgp_compute (struct lfa_fsgp_object *self,
 
 error:
   Py_XDECREF(kernarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) kernarr);
   Py_XDECREF(tarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) tarr);
   Py_XDECREF(yerrarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yerrarr);
 
   return(-1);
 }
@@ -3993,7 +4002,6 @@ static PyObject *lfa_fsgp_loglike (struct lfa_fsgp_object *self,
 
 error:
   Py_XDECREF(yarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
 
   return(NULL);
 }
@@ -4079,13 +4087,9 @@ static PyObject *lfa_fsgp_predict (struct lfa_fsgp_object *self,
 
 error:
   Py_XDECREF(yarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
   Py_XDECREF(tpredarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) tpredarr);
-  Py_XDECREF(ypredarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) ypredarr);
-  Py_XDECREF(varpredarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) varpredarr);
+  PyArray_XDECREF_ERR(ypredarr);
+  PyArray_XDECREF_ERR(varpredarr);
 
   return(NULL);
 }
@@ -4153,9 +4157,7 @@ static PyObject *lfa_fsgp_residual (struct lfa_fsgp_object *self,
 
 error:
   Py_XDECREF(yarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
-  Py_XDECREF(zarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) zarr);
+  PyArray_XDECREF_ERR(zarr);
 
   return(NULL);
 }
@@ -4209,9 +4211,7 @@ static PyObject *lfa_fsgp_sample (struct lfa_fsgp_object *self,
 
 error:
   Py_XDECREF(qarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) qarr);
-  Py_XDECREF(yarr);
-  PyArray_DiscardWritebackIfCopy((PyArrayObject *) yarr);
+  PyArray_XDECREF_ERR(yarr);
 
   return(NULL);
 }
