@@ -38,7 +38,7 @@ void wcs_vec2xy (struct wcs_info *wcs, double *vec, double *x, double *y) {
   switch(wcs->proj) {
   case PROJ_TAN:
     /* Gnomonic projection: R_theta = cot theta */
-    if(st < TINY)
+    if(fabs(st) < TINY)
       tt = 0;  /* arbitrary, but no real image should do this! */
     else
       tt = 1.0 / st;
