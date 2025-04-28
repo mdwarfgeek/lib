@@ -3862,6 +3862,96 @@ static void lfa_fsgp_dealloc (struct lfa_fsgp_object *self) {
   Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
+static PyObject *lfa_fsgp_apply (struct lfa_fsgp_object *self,
+                                 PyObject *args,
+                                 PyObject *kwds) {
+  static char *kwlist[] = { "y",
+                            NULL };
+  PyObject *yarg;
+  PyObject *yarr = NULL;
+  int nrhs = 1, ndim;
+  npy_intp *dims;
+
+  PyObject *zarr = NULL;
+
+  double *fg = NULL;
+  double *y, *z, *thisy, *thisz;
+  int irhs;
+
+  /* Get arguments */
+  if(!PyArg_ParseTupleAndKeywords(args, kwds,
+                                  "O", kwlist,
+                                  &yarg))
+    return(NULL);
+    
+  yarr = PyArray_FROM_OTF(yarg, NPY_DOUBLE, NPY_IN_ARRAY | NPY_FORCECAST);
+  if(!yarr)
+    goto error;
+
+  ndim = PyArray_NDIM(yarr);
+  dims = PyArray_DIMS(yarr);
+
+  if(ndim == 1) {
+    nrhs = 1;
+    if(dims[0] != self->fac.ndp) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'y' dimension != number of data points");
+      goto error;
+    }
+  }
+  else if(ndim == 2) {
+    nrhs = dims[0];
+    if(dims[1] != self->fac.ndp) {
+      PyErr_SetString(PyExc_IndexError,
+                      "array 'y' second dimension != number of data points");
+      goto error;
+    }
+  }
+  else {
+    PyErr_SetString(PyExc_IndexError,
+                    "don't understand shape of array 'y'");
+    goto error;
+  }
+
+  zarr = PyArray_SimpleNew(ndim, dims, NPY_DOUBLE);
+  if(!zarr)
+    goto error;
+
+  /* Allocate workspace */
+  fg = (double *) malloc(self->fac.nckern * sizeof(double));
+  if(!fg) {
+    PyErr_SetString(PyExc_MemoryError, "malloc");
+    goto error;
+  }
+
+  y = PyArray_DATA(yarr);
+  z = PyArray_DATA(zarr);
+
+  for(irhs = 0; irhs < nrhs; irhs++) {
+    thisy = y + irhs * self->fac.ndp;
+    thisz = z + irhs * self->fac.ndp;
+
+    fsgp_apply(&(self->fac), fg, thisy, thisz);
+  }
+
+  free((void *) fg);
+  fg = NULL;
+
+  Py_DECREF(yarr);
+
+  return(Py_BuildValue("N",
+                       PyArray_Return((PyArrayObject *) zarr)));
+
+error:
+  Py_XDECREF(yarr);
+  PyArray_XDECREF_ERR(zarr);
+
+  if(fg)
+    free(fg);
+
+  return(NULL);
+}
+
 static int lfa_fsgp_compute (struct lfa_fsgp_object *self,
                              PyObject *args,
                              PyObject *kwds) {
@@ -4221,6 +4311,9 @@ static PyMemberDef lfa_fsgp_members[] = {
 };
 
 static PyMethodDef lfa_fsgp_methods[] = {
+  { "apply", (PyCFunction) lfa_fsgp_apply,
+    METH_VARARGS | METH_KEYWORDS,
+    "z = apply(y)" },
   { "logdet", (PyCFunction) lfa_fsgp_logdet,
     METH_VARARGS | METH_KEYWORDS,
     "logdet = logdet()" },

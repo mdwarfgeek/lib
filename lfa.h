@@ -592,6 +592,8 @@ int fsgp_kern_valid (double *kern, int nkern);
 int fsgp_compute (struct fsgp_fac *fac,
                   double *kern, int nkern,
                   double *t, double *yerr, int ndp);
+void fsgp_apply (struct fsgp_fac *fac, double *fg,
+                 double *y, double *z);
 int fsgp_predict (struct fsgp_fac *fac, double *y,
                   double *tpred, double *ypred, double *varpred, int npred);
 int fsgp_residual (struct fsgp_fac *fac,

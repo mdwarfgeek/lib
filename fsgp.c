@@ -294,8 +294,8 @@ int fsgp_compute (struct fsgp_fac *fac,
 
 /* Apply inverse of kernel */
 
-static void fsgp_apply (struct fsgp_fac *fac, double *fg,
-                        double *y, double *z) {
+void fsgp_apply (struct fsgp_fac *fac, double *fg,
+                 double *y, double *z) {
   int idp, offp, off, jckern;
   double sum;
 
