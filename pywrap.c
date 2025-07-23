@@ -25,6 +25,15 @@
   Py_XDECREF(o)
 #endif
 
+/* If we're compiling without the pre-1.7 API, restore these macros */
+#ifndef NPY_FORCECAST
+#define NPY_FORCECAST NPY_ARRAY_FORCECAST
+#endif
+
+#ifndef NPY_IN_ARRAY
+#define NPY_IN_ARRAY NPY_ARRAY_IN_ARRAY
+#endif
+
 /* Macros to help me not get confused about y,x in numpy 2D arrays */
 #define DIM_Y  0
 #define DIM_X  1
@@ -1158,7 +1167,11 @@ static PyObject *lfa_ap_image (struct lfa_ap_object *self,
 
   /* Tell numpy who owns the memory.  This steals our reference to the
      source list, so we don't need to decref it. */
+#if defined(NPY_API_VERSION) && defined(NPY_1_7_API_VERSION) && NPY_API_VERSION >= NPY_1_7_API_VERSION
+  PyArray_SetBaseObject((PyArrayObject *) result, (PyObject *) slist);
+#else
   PyArray_BASE((PyArrayObject *) result) = (PyObject *) slist;
+#endif
 
   /* Finally we can return the result */
   return(Py_BuildValue("N",
@@ -3570,7 +3583,11 @@ static PyObject *lfa_specfind (PyObject *self,
 
   /* Tell numpy who owns the memory.  This steals our reference to the
      source list, so we don't need to decref it. */
+#if defined(NPY_API_VERSION) && defined(NPY_1_7_API_VERSION) && NPY_API_VERSION >= NPY_1_7_API_VERSION
+  PyArray_SetBaseObject((PyArrayObject *) result, (PyObject *) slist);
+#else
   PyArray_BASE((PyArrayObject *) result) = (PyObject *) slist;
+#endif
 
   /* Finally we can return the result */
   return(Py_BuildValue("N",

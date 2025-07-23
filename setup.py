@@ -2,9 +2,9 @@
 
 import distutils.core
 import distutils.ccompiler
-import numpy.distutils.misc_util
+import numpy
 
-np_inc = numpy.distutils.misc_util.get_numpy_include_dirs()
+np_inc = [ numpy.get_include() ]
 
 # Fetch the list of source files from the Makefile.
 # This little parser is rather dumb but should work okay for the way
